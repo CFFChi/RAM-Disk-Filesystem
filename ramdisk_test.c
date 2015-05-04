@@ -24,9 +24,9 @@
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
-// #define TEST1
+#define TEST1
 // #define TEST2
-#define TEST3
+// #define TEST3
 // #define TEST4
 // #define TEST5
 
@@ -66,7 +66,7 @@ int my_readdir(int fd, char* str) {
 // #define's to control whether single indirect or
 // double indirect block pointers are tested
 
-// #define TEST_SINGLE_INDIRECT
+#define TEST_SINGLE_INDIRECT
 // #define TEST_DOUBLE_INDIRECT
 
 #define MAX_FILES 1023
@@ -120,6 +120,10 @@ int main () {
   for (i = 0; i < MAX_FILES; i++) {
     sprintf (pathname, "/file%d", i);
 
+    if (i == 16) {
+      continue;
+    } 
+
     retval = UNLINK(pathname);
 
     if (retval < 0) {
@@ -133,8 +137,6 @@ int main () {
   }
 
 #endif // TEST1
-
-
 
 
 #ifdef TEST2
@@ -219,7 +221,7 @@ int main () {
   }
 
   /* Try reading from all direct data blocks */
-  retval = READ (fd, addr, sizeof(data1));
+  retval = read(fd, addr, sizeof(data1));
 
   if (retval < 0) {
     fprintf (stderr, "read: File read STAGE1 error! status: %d\n",

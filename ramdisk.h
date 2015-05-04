@@ -42,6 +42,8 @@
 #define RD_CREAT    _IOR(MAGIC_NUMBER, 0, char *)
 #define RD_OPEN	    _IOR(MAGIC_NUMBER, 2, char *)
 #define RD_CLOSE	_IOR(MAGIC_NUMBER, 3, int)
+#define RD_WRITE	_IOWR(MAGIC_NUMBER, 5, struct IOParameter)
+#define RD_LSEEK	_IOR(MAGIC_NUMBER, 6, struct IOParameter)
 #define RD_UNLINK 	_IOR(MAGIC_NUMBER, 7, char *)
 
 /* ioctl Functions */
@@ -51,6 +53,7 @@ int k_open(char* pathname);
 int k_close(int fd);
 int k_write(int fd, char* address, int numBytes);
 int k_unlink(char* pathname);
+int k_lseek(int fd, int offset);
 
 /* FileDescriptor - Keeps track of opened files on a per-process basis
  *		rPosition : Current read position of a file

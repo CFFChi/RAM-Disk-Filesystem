@@ -28,14 +28,15 @@ int rd_open(char *pathname) {
 	return ret;
 }
 
-int rd_close(int fd2) {
-	int fd1 = open("/proc/ramdisk", O_RDONLY);
+int rd_close(int fd) {
+	int ret, fdRoot;
 
 	printf("Calling rd_close()\n");
-	printf("fd: %d\n", fd2);
+	printf("fd: %d\n", fd);
 
-	int ret = ioctl(fd1, RD_CLOSE, &fd2);
-	close(fd1);
+	fdRoot = open("/proc/ramdisk", O_RDONLY);
+	ret = ioctl(fdRoot, RD_CLOSE, &fd);
+	close(fdRoot);
 	return ret; 
 }
 
@@ -49,6 +50,7 @@ int rd_write(int fd, char *address, int num_bytes) {
 
 	fd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fd, RD_WRITE, &param);
+	return ret;
 }
 
 int rd_unlink(char *pathname) {
@@ -61,4 +63,49 @@ int rd_unlink(char *pathname) {
 	close(fd);
 	return ret; 
 }
+
+
+int rd_lseek(int fd, int offset) {
+	int ret, fdRoot; 
+	struct IOParameter param; 
+
+	param.fd = fd;
+	param.address = NULL;
+	param.numBytes = offset; 
+
+	fdRoot = open("/proc/ramdisk", O_RDONLY);
+	ret = ioctl(fdRoot, RD_LSEEK, &param);
+	close(fd);
+	return ret; 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
