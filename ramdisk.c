@@ -1313,7 +1313,7 @@ int write(short iIndex, unsigned char *data, int size) {
 		}
 	}
 	/* Error : Could not write the data */
-	printk("write() Error : Could not write the data")
+	printk("write() Error : Could not write the data");
 	return -1;
 }	
 
@@ -1372,25 +1372,21 @@ int writeFile(short iIndex, int filePos, unsigned char *data, int dataSize) {
 
 int k_write(int fd, char* address, int numBytes) {
 	int dataSize, position;
-	int numBytes, totalBytes;  
+	int numBytesWritten, totalBytes;  
 	unsigned char *data; 
-
 	/* File descriptor refers to non-existent file */
 	if (fdTable[fd] == NULL) {
 		printk("k_write() Error : File does not exist or file descriptor is not valid\n");
 		return -1;
 	}
-
 	/* File descriptor refers to a directory file */
 	if (strncmp(ramdisk->ib[fd].type, "reg", 3) != 0) {
 		printk("k_write() Error : File is not a regular file\n");
 		return -1;
 	}
-
 	/* Initialize these values */
 	dataSize = 0; position = 0; numBytes = 0; totalBytes = 0; 
 	data = (unsigned char *) kmalloc(SIZEOF_DIRECT_PTR, GFP_KERNEL);
-
 	/* Write data until position reaches the size of the data */
 	while (position < numBytes) {
 		/* Compute the remaining data size to write */
@@ -1402,14 +1398,14 @@ int k_write(int fd, char* address, int numBytes) {
 		/* Write the data in address displaced by position into temporary data container */
 		memcpy(data, address + position, dataSize);
 		/* Set and adjust the size of file into the file descriptor table */
-		if ((numBytes = writeFile(fd, fdTable[fd]->filePos, data, dataSize)) < 0) {
+		if ((numBytesWritten = writeFile(fd, fdTable[fd]->filePos, data, dataSize)) < 0) {
 			printk("k_write() Error : Could not compute number of bytes written to file\n");
 			return -1;
 		}
 		/* Add the position by the data size written to data container */
 		position += dataSize; 	
 		/* Add the number of bytes written to address */
-		totalBytes += numBytes; 
+		totalBytes += numBytesWritten; 
 		/* Reset the temporary data container */
 		memset(data, 0, dataSize);
 	}
