@@ -23,12 +23,12 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 int isEmpty(union Block *location) {
 	// printk("check empty\n");
-	struct RegBlock file = location->reg;
 	int i = 0; 
 	while (i < SIZEOF_BLOCK) {
-		if (file.data[i++] != 0) {
+		if (location->reg.data[i] != 0) {
 			return 0; 
 		}
+		i++;
 	}
 	return 1; 
 }
@@ -56,11 +56,10 @@ void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) {
 	return;
 }
 
-void cleanupDirLocation(union Block *location, union Block *locationToNull) {
+void cleanupDirLocation(union Block *location) {
 	unsigned int bIndex;
 	unsigned char byte, offset; 
-	// printk("in cleanupDir\n");
-
+	
 	/* Retrieve element index in free block */
 	bIndex = (location - ramdisk->fb) / SIZEOF_BLOCK;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
@@ -70,8 +69,9 @@ void cleanupDirLocation(union Block *location, union Block *locationToNull) {
 	ramdisk->bb.byte[bIndex / 8] = byte & offset;
 	/* Increment number of free blocks available in Super Block*/
 	ramdisk->sb.numFreeBlocks++;
+
 	/* Nullify the current location */
-	locationToNull = NULL;
+	// locationToNull = NULL;
 
 	return;
 }
@@ -111,7 +111,7 @@ int removeDirEntry(short iIndex, char* filename) {
 
 					memset(&(dirBlock->entry[j]), 0, sizeof(struct DirEntry));
 					if (isEmpty(location)) {
-						cleanupDirLocation(location, inode->location[i]);
+						cleanupDirLocation(location);
 					}
 					return 0;
 				}
@@ -122,6 +122,7 @@ int removeDirEntry(short iIndex, char* filename) {
 			ptrBlock = &(location->ptr);
 
 			for (j = 0; j < SIZEOF_PTR; j++) {
+
 				singlePtr = ptrBlock->location[j];
 				if (singlePtr == 0) { continue; }
 
@@ -137,13 +138,13 @@ int removeDirEntry(short iIndex, char* filename) {
 
 							memset(&(dirBlock->entry[k]), 0, sizeof(struct DirEntry));
 							if (isEmpty(singlePtr)) {
-								cleanupDirLocation(singlePtr, ptrBlock->location[j]);
+								cleanupDirLocation(singlePtr);
 							}
 						}
 					}
 					/* Depth Zero */
 					if (isEmpty(location)) {
-						cleanupDirLocation(location, inode->location[i]);
+						cleanupDirLocation(location);
 					}
 					return 0;
 				}
@@ -161,17 +162,17 @@ int removeDirEntry(short iIndex, char* filename) {
 							if (strncmp(dirBlock->entry[l].filename, filename, 14) == 0) {
 								memset(&(dirBlock->entry[l]), 0, sizeof(struct DirEntry));
 								if (isEmpty(doublePtr)) {
-									cleanupDirLocation(doublePtr, singlePtr->ptr.location[k]);
+									cleanupDirLocation(doublePtr);
 								}						
 							}
 						}
 						/* Depth One */
 						if (isEmpty(singlePtr)) {
-							cleanupDirLocation(singlePtr, ptrBlock->location[j]);
+							cleanupDirLocation(singlePtr);
 						}
 						/* Depth Zero */
 						if (isEmpty(location)) {
-							cleanupDirLocation(location, inode->location[i]);	
+							cleanupDirLocation(location);	
 						}
 						return 0;
 					}
@@ -190,7 +191,7 @@ void cleanupRegLocation(union Block *location) {
 	unsigned int bIndex; 
 	unsigned char byte, offset; 
 
-	// printk("inside cleanupRegLocation\n");
+	printk("inside cleanupRegLocation\n");
 
 	/* Set the block bytes to zero */
 	memset(location->reg.data, 0, SIZEOF_BLOCK);
@@ -213,20 +214,14 @@ int removeRegEntry(struct InodeBlock *inode) {
 	int i, j, k;
 	union Block* location, *singlePtr, *doublePtr; 
 
-	// printk("in removeRegEntry\n");
+	printk("in removeRegEntry\n");
 
 	for (i = 0; i < SIZEOF_LOCATION; i++) {
 
 		location = inode->location[i];
 
-		// printk("%x\n", inode->location[i]);
-		// printk("%s\n", inode->type);
-
-		// printk("type in regremove : %s\n", inode->type);
-		// printk("");
 		/* There is nothing inside this block so just return */
 		if (location == 0) { 
-			// ramdisk->sb.numFreeInodes++;
 			return 0; 
 		}
 
@@ -954,13 +949,13 @@ int k_unlink(char* pathname) {
 				return -1; 
 			}
 
-			memset(ramdisk->ib[index].type, 0, 4);
-
 			/* Remove file */
 			if ((ret = removeRegEntry(&(ramdisk->ib[index]))) != 0) { 
 				printk("k_unlink() Error : Could not remove regular file\n");
 				return -1; 
 			} 
+			memset(ramdisk->ib[index].type, 0, 4);
+
 
 			/* Increment number of available free inodes*/
 			ramdisk->sb.numFreeInodes++;
@@ -1138,6 +1133,8 @@ int readFile(short iIndex, int filePos, unsigned char *data, int size) {
 	newData = (unsigned char *) kmalloc(MAX_FILE_SIZE, GFP_KERNEL);
 	possibleSize = adjustPosition(iIndex, newData) - 1;
 	newSize = filePos + size; 
+
+	// printk("data ; %s\n", data);
 
 	if (newSize > possibleSize) {
 		printk("Overflow Read Case\n");
@@ -1321,6 +1318,8 @@ int writeFile(short iIndex, int filePos, unsigned char *data, int dataSize) {
 	int position, ret, newSize; 
 	unsigned char *newData; 
 
+	// printk("Data in writeFile(): %s\n", data);
+
 	/* Initialize these values  */
 	position = 0; 
 	newData = (unsigned char *) kmalloc(dataSize, GFP_KERNEL);
@@ -1385,7 +1384,7 @@ int k_write(int fd, char* address, int numBytes) {
 		return -1;
 	}
 	/* Initialize these values */
-	dataSize = 0; position = 0; numBytes = 0; totalBytes = 0; 
+	dataSize = 0; position = 0; totalBytes = 0; 
 	data = (unsigned char *) kmalloc(SIZEOF_DIRECT_PTR, GFP_KERNEL);
 	/* Write data until position reaches the size of the data */
 	while (position < numBytes) {
@@ -1402,6 +1401,8 @@ int k_write(int fd, char* address, int numBytes) {
 			printk("k_write() Error : Could not compute number of bytes written to file\n");
 			return -1;
 		}
+
+		// printk("numBytesWritten: %s\n", numBytesWritten);
 		/* Add the position by the data size written to data container */
 		position += dataSize; 	
 		/* Add the number of bytes written to address */
@@ -1409,7 +1410,7 @@ int k_write(int fd, char* address, int numBytes) {
 		/* Reset the temporary data container */
 		memset(data, 0, dataSize);
 	}
-	// printk("Total Bytes Written: %d\n", totalBytes);
+	printk("Total Bytes Written: %d\n", totalBytes);
 	return totalBytes; 
 }
 
@@ -1524,9 +1525,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			// printk("<1> param->address : %x\n", param.address);
 			// printk("<1> param->numBytes : %d\n", param.numBytes);
 
-			// printk("Data before k_read() : %s\n", param.address);
+			printk("Data before k_read() : %s\n", param.address);
 			ret = k_read(param.fd, param.address, param.numBytes);
-			// printk("Data after k_read() : %s\n", param.address);
+			printk("Data after k_read() : %s\n", param.address);
 
 			cleanParam(&param);
 			return ret;
@@ -1539,10 +1540,11 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			// printk("<1> param->fd : %d\n", param.fd);
 			// printk("<1> param->address : %x\n", param.address);
 			// printk("<1> param->numBytes : %d\n", param.numBytes);
-
+			// printk("Data before k_write() : %s\n", param.address);
 			// printk("Pos before write(): %d\n", fdTable[param.fd]->filePos);
 			ret = k_write(param.fd, param.address, param.numBytes);
 			// printk("Pos after write(): %d\n", fdTable[param.fd]->filePos);
+			// printk("Data after k_write() : %s\n", param.address);
 
 			cleanParam(&param);
 			return ret;

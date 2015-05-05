@@ -24,9 +24,9 @@
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
-#define TEST1
-// #define TEST2
-// #define TEST3     // Test 3 is dependent on Test 2
+// #define TEST1
+#define TEST2
+#define TEST3     // Test 3 is dependent on Test 2
 // #define TEST4
 // #define TEST5
 
@@ -138,8 +138,6 @@ int main () {
 #ifdef TEST2
 
   /* ****TEST 2: LARGEST file size**** */
-
-
   /* Generate one LARGEST file */
   retval = CREAT ("/bigfile");
 
