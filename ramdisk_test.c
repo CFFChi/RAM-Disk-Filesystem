@@ -25,9 +25,9 @@
 // comment out a test if you do not wish to perform it
 
 // #define TEST1
-// #define TEST2
-// #define TEST3
-#define TEST4
+#define TEST2
+#define TEST3     // Test 3 is dependent on Test 2
+// #define TEST4
 // #define TEST5
 
 #define USE_RAMDISK
@@ -167,8 +167,7 @@ int main () {
   printf("write returned: %d\n", retval);
 
   if (retval < 0) {
-    fprintf (stderr, "write: File write STAGE1 error! status: %d\n",
-	     retval);
+    fprintf (stderr, "write: File write STAGE1 error! status: %d\n", retval);
 
     exit(EXIT_FAILURE);
   }
@@ -210,8 +209,7 @@ int main () {
   retval = LSEEK (fd, 0);	/* Go back to the beginning of your file */
 
   if (retval < 0) {
-    fprintf (stderr, "lseek: File seek error! status: %d\n",
-	     retval);
+    fprintf (stderr, "lseek: File seek error! status: %d\n", retval);
 
     exit(EXIT_FAILURE);
   }
@@ -272,7 +270,10 @@ int main () {
 
   /* Remove the biggest file */
 
+
   retval = UNLINK ("/bigfile");
+
+  printf("%d\n", retval);
 
   if (retval < 0) {
     fprintf (stderr, "unlink: /bigfile file deletion error! status: %d\n",

@@ -90,9 +90,7 @@ struct IoctlInfo {
 struct SuperBlock {
 	int numFreeInodes;
 	int numFreeBlocks;
-	int createIndex; 
-	int everySixteen; 
-	char emptiness[SIZEOF_BLOCK - 12];
+	char emptiness[SIZEOF_BLOCK - 8];
 };
 	
 /* InodeBlock (Size: 64 bytes) 

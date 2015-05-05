@@ -9,7 +9,7 @@
 int rd_creat(char *pathname) {
 	int fd, ret;
 	printf("Calling rd_creat()...\n");
-	printf("Path: %s\n", pathname);
+	// printf("Path: %s\n", pathname);
 
 	fd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fd, RD_CREAT, pathname);
@@ -20,7 +20,7 @@ int rd_creat(char *pathname) {
 int rd_mkdir(char* pathname) {
 	int fd, ret; 
 	printf("Calling rd_mkdir()...\n");
-	printf("Path: %s\n", pathname);
+	// printf("Path: %s\n", pathname);
 
 	fd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fd, RD_MKDIR, pathname);
@@ -31,7 +31,7 @@ int rd_mkdir(char* pathname) {
 int rd_open(char *pathname) {
 	int fd, ret; 
 	printf("Calling rd_open()...\n");
-	printf("Path: %s\n", pathname);
+	// printf("Path: %s\n", pathname);
 
 	fd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fd, RD_OPEN, pathname);
@@ -43,7 +43,7 @@ int rd_close(int fd) {
 	int ret, fdRoot;
 
 	printf("Calling rd_close()\n");
-	printf("fd: %d\n", fd);
+	// printf("fd: %d\n", fd);
 
 	fdRoot = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fdRoot, RD_CLOSE, &fd);
@@ -85,7 +85,7 @@ int rd_write(int fd, char *address, int numBytes) {
 int rd_unlink(char *pathname) {
 	int fd, ret; 
 	printf("Calling rd_unlink()...\n");
-	printf("Path: %s\n", pathname);
+	// printf("Path: %s\n", pathname);
 
 	fd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fd, RD_UNLINK, pathname);
@@ -95,6 +95,10 @@ int rd_unlink(char *pathname) {
 
 
 int rd_lseek(int fd, int offset) {
+	printf("Calling rd_lseek()...\n");
+	// printf("fd: %d\n", fd);
+	// printf("offset: %d\n", offset);
+
 	int ret, fdRoot; 
 	struct IOParameter param; 
 
@@ -104,34 +108,9 @@ int rd_lseek(int fd, int offset) {
 
 	fdRoot = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fdRoot, RD_LSEEK, &param);
-	close(fd);
+	close(fdRoot);
 	return ret; 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
