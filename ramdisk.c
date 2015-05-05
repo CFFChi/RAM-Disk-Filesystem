@@ -186,10 +186,11 @@ int removeDirEntry(short iIndex, char* filename) {
 
 void cleanupRegLocation(union Block *location) {
 
-	printk("inside cleanupRegLocation\n");
 
 	unsigned int bIndex; 
 	unsigned char byte, offset; 
+
+	printk("inside cleanupRegLocation\n");
 
 	/* Set the block bytes to zero */
 	memset(location->reg.data, 0, SIZEOF_BLOCK);
@@ -220,9 +221,8 @@ int removeRegEntry(struct InodeBlock *inode) {
 
 		location = inode->location[i];
 
-		printk("type in regremove : %s\n", inode->type);
-		printk("");
-
+		// printk("type in regremove : %s\n", inode->type);
+		// printk("");
 		/* There is nothing inside this block so just return */
 		if (location == 0) { 
 			// ramdisk->sb.numFreeInodes++;
@@ -496,7 +496,7 @@ int getFreeBlock(void) {
 	return -1;
 }
 
-int assignInode(short parentInode, short newInode, char *filename) {
+int assignInode(short parentInode, short newInode, char *filename, int dirFlag) {
 	int i, j, k, l;
 	int freeBlock, fbSingle, fbDouble; 
 
@@ -513,10 +513,14 @@ int assignInode(short parentInode, short newInode, char *filename) {
 				printk("assignInode() Error : Could not find free block in ramdisk\n");
 				return -1; 
 			}
-			printk("okay so far\n");
+			// printk("okay so far\n");
+			printk("assigned free block index %d\n", freeBlock);
+
+
+			// printk("here1");
+			// printk("here2");
 
 			/* Assign free block to block location i */
-			// printk("assigned free block index %d\n", freeBlock);
 			ramdisk->ib[parentInode].location[i] = &ramdisk->fb[freeBlock];
 
 			/* Direct Block Pointers locatoin[0 ~ 7] */
@@ -526,7 +530,9 @@ int assignInode(short parentInode, short newInode, char *filename) {
 				// setDirEntryLocation(freeBlock, 0, 0, filename, newInode);
 
 				setDirEntry(freeBlock, 0, filename, newInode);
-				setDirEntryLocation(parentInode, freeBlock, 0, filename, newInode);
+				if (!dirFlag) {
+					setDirEntryLocation(parentInode, freeBlock, 0, filename, newInode);
+				}
 				return 0;
 			} else {
 				/* Single Indirect Block Pointer location[8] */
@@ -963,24 +969,59 @@ int k_unlink(char* pathname) {
 	return -1;
 }
 
-int k_creat(char* pathname) {
+int k_mkdir(char* pathname) {
 	short parentInode; 
-	int ret, freeInode; 
-	char* filename;
+	int ret, freeInode;
+	char* dirName; 
 
-	parentInode = 0;
+	dirName = (char *) kmalloc(14, GFP_KERNEL);
 
-	filename = (char *) kmalloc(14, GFP_KERNEL);
-
-	// printk("parentInode in creat: %d\n", parentInode);
-
-	/* Retrieve last directory entry in pathname and store in parentInode */
-	if ((ret = fileExists(pathname, filename, &parentInode)) != 0) {
+	/* Retrieve the directory's parent directory  */
+	if ((ret = fileExists(pathname, dirName, &parentInode)) != 0) {
 		printk("k_creat() Error : File already exists or Error in fileExists()\n");
 		return -1;
 	}
 
-	printk("Creating %s...\n", filename);
+	printk("Creating directory : %s\n", dirName);
+
+	if ((freeInode = getFreeInode()) < 0) {
+		printk("k_creat() Error : Could not find free index node\n");
+		return -1; 
+	}
+
+	/* Create the directory at IB[freeNode] of size 0 */
+	setDirInode(freeInode, 0);
+
+
+	printk("parentINode : %d\n", parentInode);
+	printk("freeInode : %d\n", freeInode);
+
+	if ((ret = assignInode(parentInode, freeInode, dirName, 1)) < 0) {
+		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
+		return -1;
+	} 
+
+	return 0;
+}
+
+int k_creat(char* pathname) {
+	short parentInode; 
+	int ret, freeInode; 
+	char* fileName;
+
+	parentInode = 0;
+
+	fileName = (char *) kmalloc(14, GFP_KERNEL);
+
+	// printk("parentInode in creat: %d\n", parentInode);
+
+	/* Retrieve last directory entry in pathname and store in parentInode */
+	if ((ret = fileExists(pathname, fileName, &parentInode)) != 0) {
+		printk("k_creat() Error : File already exists or Error in fileExists()\n");
+		return -1;
+	}
+
+	printk("Creating %s...\n", fileName);
 
 	/* File Creation 
 	 * 1) Search for free index node 
@@ -996,7 +1037,7 @@ int k_creat(char* pathname) {
 
 	// printk("parentInode : %d\n", parentInode);
 
-	if ((ret = assignInode(parentInode, freeInode, filename)) < 0) {
+	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
 		return -1;
 	} 
@@ -1456,6 +1497,20 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			printk("<1> info->pathname: %s\n", info.pathname);
 
 			ret = k_creat(info.pathname);
+			cleanInfo(&info);
+			return ret; 
+			break; 
+
+		case RD_MKDIR:
+			printk("Case: RD_MKDIR()...\n");
+			info.size = strlen_user((char *) arg);
+			info.pathname = (char *) kmalloc(info.size, GFP_KERNEL);
+			copy_from_user(info.pathname, (char *) arg, info.size);
+
+			printk("<1> info->size : %u\n", info.size);
+			printk("<1> info->pathname: %s\n", info.pathname);
+
+			ret = k_mkdir(info.pathname);
 			cleanInfo(&info);
 			return ret; 
 			break; 

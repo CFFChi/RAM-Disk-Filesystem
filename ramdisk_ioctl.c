@@ -19,9 +19,13 @@ int rd_creat(char *pathname) {
 
 int rd_mkdir(char* pathname) {
 	int fd, ret; 
-	
+	printf("Calling rd_mkdir()...\n");
+	printf("Path: %s\n", pathname);
 
-
+	fd = open("/proc/ramdisk", O_RDONLY);
+	ret = ioctl(fd, RD_MKDIR, pathname);
+	close(fd);
+	return ret;
 }
 
 int rd_open(char *pathname) {
