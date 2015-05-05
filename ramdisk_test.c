@@ -24,10 +24,10 @@
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
-#define TEST1
+// #define TEST1
 // #define TEST2
 // #define TEST3
-// #define TEST4
+#define TEST4
 // #define TEST5
 
 #define USE_RAMDISK
@@ -66,7 +66,7 @@ int my_readdir(int fd, char* str) {
 // #define's to control whether single indirect or
 // double indirect block pointers are tested
 
-#define TEST_SINGLE_INDIRECT
+// #define TEST_SINGLE_INDIRECT
 // #define TEST_DOUBLE_INDIRECT
 
 #define MAX_FILES 1023
@@ -94,7 +94,6 @@ int main () {
   memset (data3, '3', sizeof (data1));
 
 
-
 #ifdef TEST1
 
   /* ****TEST 1: MAXIMUM file creation**** */
@@ -120,11 +119,8 @@ int main () {
   for (i = 0; i < MAX_FILES; i++) {
     sprintf (pathname, "/file%d", i);
 
-    if (i == 16) {
-      continue;
-    } 
-
     retval = UNLINK(pathname);
+
 
     if (retval < 0) {
       fprintf (stderr, "unlink: File deletion error! status: %d\n",
@@ -168,6 +164,8 @@ int main () {
   /* Try writing to all direct data blocks */
   retval = WRITE(fd, data1, sizeof(data1));
 
+  printf("write returned: %d\n", retval);
+
   if (retval < 0) {
     fprintf (stderr, "write: File write STAGE1 error! status: %d\n",
 	     retval);
@@ -206,8 +204,6 @@ int main () {
 #endif // TEST2
 
 
-
-
 #ifdef TEST3
 
   /* ****TEST 3: Seek and Read file test**** */
@@ -221,7 +217,7 @@ int main () {
   }
 
   /* Try reading from all direct data blocks */
-  retval = read(fd, addr, sizeof(data1));
+  retval = READ(fd, addr, sizeof(data1));
 
   if (retval < 0) {
     fprintf (stderr, "read: File read STAGE1 error! status: %d\n",

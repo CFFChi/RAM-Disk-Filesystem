@@ -17,6 +17,13 @@ int rd_creat(char *pathname) {
 	return ret;
 }
 
+int rd_mkdir(char* pathname) {
+	int fd, ret; 
+	
+
+
+}
+
 int rd_open(char *pathname) {
 	int fd, ret; 
 	printf("Calling rd_open()...\n");
@@ -40,16 +47,34 @@ int rd_close(int fd) {
 	return ret; 
 }
 
-int rd_write(int fd, char *address, int num_bytes) {
-	int ret; 
+int rd_read(int fd, char *address, int numBytes) {
+	int ret, fdRoot;
+	struct IOParameter param;
+
+	printf("Calling rd_read()\n");
+	param.fd = fd;
+	param.address = address;
+	param.numBytes = numBytes; 
+
+	fdRoot = open("/proc/ramdisk", O_RDONLY);
+	ret = ioctl(fdRoot, RD_READ, &param);
+	close(fdRoot);
+	return ret; 
+}
+
+int rd_write(int fd, char *address, int numBytes) {
+	int ret, fdRoot;
 	struct IOParameter param; 
+
+	printf("Calling rd_write()\n");
 
 	param.fd = fd; 
 	param.address = address;
-	param.numBytes = num_bytes;
+	param.numBytes = numBytes;
 
-	fd = open("/proc/ramdisk", O_RDONLY);
-	ret = ioctl(fd, RD_WRITE, &param);
+	fdRoot = open("/proc/ramdisk", O_RDONLY);
+	ret = ioctl(fdRoot, RD_WRITE, &param);
+	close(fdRoot);
 	return ret;
 }
 

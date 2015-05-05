@@ -42,15 +42,18 @@
 #define RD_CREAT    _IOR(MAGIC_NUMBER, 0, char *)
 #define RD_OPEN	    _IOR(MAGIC_NUMBER, 2, char *)
 #define RD_CLOSE	_IOR(MAGIC_NUMBER, 3, int)
+#define RD_READ		_IOR(MAGIC_NUMBER, 4, struct IOParameter)
 #define RD_WRITE	_IOWR(MAGIC_NUMBER, 5, struct IOParameter)
 #define RD_LSEEK	_IOR(MAGIC_NUMBER, 6, struct IOParameter)
 #define RD_UNLINK 	_IOR(MAGIC_NUMBER, 7, char *)
+
 
 /* ioctl Functions */
 int initializeRAMDISK(void);
 int k_creat(char* pathname);
 int k_open(char* pathname);
 int k_close(int fd);
+int k_read(int fd, char* address, int numBytes);
 int k_write(int fd, char* address, int numBytes);
 int k_unlink(char* pathname);
 int k_lseek(int fd, int offset);
@@ -85,7 +88,9 @@ struct IoctlInfo {
 struct SuperBlock {
 	int numFreeInodes;
 	int numFreeBlocks;
-	char emptiness[SIZEOF_BLOCK - 8];
+	int createIndex; 
+	int everySixteen; 
+	char emptiness[SIZEOF_BLOCK - 12];
 };
 	
 /* InodeBlock (Size: 64 bytes) 
