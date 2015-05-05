@@ -17,6 +17,7 @@ int k_readdir(int fd, char* address) {
 		return 0;
 	}
 	
+	
 	//UNFINISHED!!
 	if(islast?(desc->filePos)) {
 		printk("k_readdir() Error : Reached end of directory\n");
