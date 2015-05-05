@@ -1,41 +1,35 @@
-#define SIZEOF_RAMDISK 	(2 * 1024 * 1024)
-#define SIZEOF_BLOCK	256 
+//Each define with suffix SZ refers to the number of bytes.
 
-#define SIZEOF_SB	1
-#define SIZEOF_IB	256
-#define SIZEOF_BB	4
-#define SIZEOF_FB	(SIZEOF_RAMDISK - SIZEOF_BLOCK*(SIZEOF_SB + SIZEOF_IB + SIZEOF_BB))
+#define RDSKSZ 2097152
+#define BLKSZ	256
+#define BTMPSZ (4 * BLKSZ)
+#define NODESZ 64
 
-#define SIZEOF_PTR 			(SIZEOF_BLOCK / 4)
-#define SIZEOF_DIR_BLOCK	(SIZEOF_PTR / 4)
-#define SIZEOF_LOCATION		10 
-#define SIZEOF_FILENAME		14
-#define SIZEOF_DIRECT_PTR	(NUM_DIRECT_PTR * SIZEOF_BLOCK)
+#define NUMEPB 16  // max entries per directory block; BLKSZ/(size of dirEntry)
+#define NUMPTRS 10  // number of pointers for location field in inode
+#define NUMDPTRS	8  // number of direct pointers
 
-#define IB_PARTITION (SIZEOF_IB * SIZEOF_IB / SIZEOF_PTR)
-#define FB_PARTITION (SIZEOF_FB / SIZEOF_BLOCK)
+#define FNAMESZ 14  //max filename size
+#define DBLKSZ (NUMDPTRS * BLKSZ) //total size of blocks pointed to by direct pointers in location
 
+#define IBARR 1024  //num nodes in Inode array
+#define FBARR (RDSKSZ/BLKSZ - (1 + 256 + 4)) //num blocks in File array
+#define IBARRSZ (IBARR * NODESZ)
+#define FBARRSZ (FBARR * BLKSZ)
 
-#define NUM_DIRECT_PTR	8
+#define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  //max file size
+#define MAXFCT	1024 //max file count
 
-#define MAX_FILE_SIZE	((NUM_DIRECT_PTR*SIZEOF_BLOCK) + (SIZEOF_PTR*SIZEOF_BLOCK) + (SIZEOF_PTR*SIZEOF_PTR*SIZEOF_BLOCK))
-#define MAX_FILE_COUNT	1024
-
-#define DIRECT_PTR1 0
-#define DIRECT_PTR2 1 
-#define DIRECT_PTR3 2
-#define DIRECT_PTR4 3
-#define DIRECT_PTR5 4
-#define DIRECT_PTR6 5
-#define DIRECT_PTR7 6 
-#define DIRECT_PTR8 7 
-#define SINGLE_REDIRECT_PTR 8
-#define DOUBLE_REDIRECT_PTR 9
-
-/* Bitmap Operation */
-#define SET_BIT_MASK1(x) (0x01 << (7-x))		// Sets bit x to 1 and remaining bits to 0
-#define SET_BIT_MASK0(x) (~SET_BIT_MASK1(x))	// Sets bit x to 0 and remaining bits to 1
-
+#define DPTR1 0
+#define DPTR2 1
+#define DPTR3 2
+#define DPTR4 3
+#define DPTR5 4
+#define DPTR6 5
+#define DPTR7 6
+#define DPTR8 7
+#define RPTR 8
+#define RRPTR 9
 
 /* ioctl Macro Definition */
 #define MAGIC_NUMBER 155
@@ -47,7 +41,11 @@
 #define RD_WRITE	_IOWR(MAGIC_NUMBER, 5, struct IOParameter)
 #define RD_LSEEK	_IOR(MAGIC_NUMBER, 6, struct IOParameter)
 #define RD_UNLINK 	_IOR(MAGIC_NUMBER, 7, char *)
+#define RD_READDIR 	_IOR(MAGIC_NUMBER, 8, struct IOParameter)
 
+/* Bitmap Operation */
+#define SET_BIT_MASK1(x) (0x01 << (7-x))		// Sets bit x to 1 and remaining bits to 0
+#define SET_BIT_MASK0(x) (~SET_BIT_MASK1(x))	// Sets bit x to 0 and remaining bits to 1
 
 /* ioctl Functions */
 int initializeRAMDISK(void);
@@ -71,103 +69,115 @@ int k_lseek(int fd, int offset);
  };
 
 /* ioctlInfo - Container to store parameters from user-space
- * 		fd : File Descriptor 
+ * 		fd : File Descriptor
  *		size : Size of the file
  *		pathname : Pathname of the file
  *		address : Address of the file
- *		param : Arguments 
+ *		param : Arguments
  */
 struct IoctlInfo {
 	char *pathname;
-	unsigned int size; 
+	unsigned int size;
 };
 
 /* Superblock (Size: 256 bytes)
  * 		numFreeInodes : Number of free index nodes in ramdisk
- * 		numFreeBlocks : Number of free blocks in ramdisk 
+ * 		numFreeBlocks : Number of free blocks in ramdisk
  * 		emptiness : Empty byte sequence to align 256 bytes block size
  */
 struct SuperBlock {
 	int numFreeInodes;
 	int numFreeBlocks;
-	char emptiness[SIZEOF_BLOCK - 8];
+	char emptiness[BLKSZ - 8];
 };
-	
-/* InodeBlock (Size: 64 bytes) 
+
+/* Inode (Size: 64 bytes)
  * 		type : Type of the file (regular="reg" or directory="dir")
  * 		size : Size of the file in bytes
- * 		*blocks : Pointer to the file 
+ * 		*blocks : Pointer to the file
  *			Pointer to File
  *			Pointer to Directory
  *			Pointer to Pointer to Block for Larger Files
  *		emptiness : Empty byte sequence to align 256 bytes block size
  */
-struct InodeBlock {
-	char type[4]; 
-	int size; 
-	union Block *location[SIZEOF_LOCATION]; 
-	char emptiness[SIZEOF_PTR - 48];
+struct Inode {
+	char type[4];
+	int size;
+	union Block *location[NUMPTRS];
+	char emptiness[NODESZ - 48];
 };
 
 /* Regular File Block
  * 		data : Data content of the file
  */
 struct RegBlock {
-	char data[SIZEOF_BLOCK];
+	char data[BLKSZ];
 };
 
-/* Directory File Block 
+/* Directory Entry
  *		filename : Name of the file (Maximum 14 characters)
  *		inodeNumber : Number for indexing into Index Node Array
  */
 struct DirEntry {
-	char  filename[SIZEOF_FILENAME];
+	char filename[FNAMESZ];
 	short inode;
 };
 
-/* Directory Entry 
+/* Directory File Block
  *		entry : Array of directory entries containing filename and inode information
+ *    size of DFB is sizeof(dirEntry) (16) * sizeof(NUMEPB) (16) = 256, or BLKSZ
  *
  */
 struct DirBlock {
-	struct DirEntry entry[SIZEOF_DIR_BLOCK];
+	struct DirEntry entry[NUMEPB];
 };
 
-/* Pointer to File Block 
+/* Pointer to File Block
  *		*blocks : Pointer to the file
  */
 struct PtrBlock {
-	union Block *location[SIZEOF_PTR];
+	union Block *location[NODESZ];
 };
 
-/* Bitmap Block
+/* Bitmap
  * 		 byte : Keep track of free and allocated blocks in the rest of the partition
  */
-struct BitmapBlock {
-	unsigned char byte[SIZEOF_BLOCK * SIZEOF_BB];
+struct Bitmap {
+	unsigned char byte[BLKSZ * BTMPSZ];
 };
 
-/*  Block (Max Size : 256 bytes) 
+/*  Block (Max Size : 256 bytes)
  *		regBlock : Regular file
  *		dirBlock : Directory file
  *		ptrBlock : Pointer to Block file
  */
 union Block {
-	struct RegBlock reg; 
-	struct DirBlock dir; 
-	struct PtrBlock ptr; 
+	struct RegBlock reg;
+	struct DirBlock dir;
+	struct PtrBlock ptr;
 };
 
 /*
- * RamDisk (Size: 2MB) contains 
+ * RamDisk (Size: 2MB) contains
  *		SuperBlock 	(Size: 1 block)
  *		InodeBlock 	(Size: 256 InodeBlocks)
  *		BitmapBlock (Size: 4 blocks)
  *		FreeBlock	(Size: (2MB - 256(1+256+4)))
  */
 struct Ramdisk {
-	struct SuperBlock 	sb;
-	struct InodeBlock 	ib[IB_PARTITION];
-	struct BitmapBlock	bb;
-	union  Block		fb[FB_PARTITION];
+	struct SuperBlock sb;
+	struct Inode ib[IBARR];
+	struct Bitmap	bb;
+	union Block fb[FBARR];
+};
+
+/*
+ * IOParam
+ *        File descriptor, address, and number of bytes.
+ */
+
+struct IOParameter {
+	int fd;
+	char *address;
+	int numBytes;
 };

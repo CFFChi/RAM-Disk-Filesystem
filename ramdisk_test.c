@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include "ramdisk_ioctl.h"
+#include "ramdisk.h"
 
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
