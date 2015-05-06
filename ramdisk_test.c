@@ -267,11 +267,7 @@ int main () {
   }
 
   /* Remove the biggest file */
-
-
   retval = UNLINK ("/bigfile");
-
-  printf("%d\n", retval);
 
   if (retval < 0) {
     fprintf (stderr, "unlink: /bigfile file deletion error! status: %d\n",
