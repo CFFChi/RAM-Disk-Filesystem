@@ -10,5 +10,3 @@ clean:
 	rmmod ramdisk
 	rm ramdisk_test
 
-update:
-	scp * ampy@csa2.bu.edu:cs552/discos
