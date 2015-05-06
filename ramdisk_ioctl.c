@@ -122,8 +122,8 @@ int rd_readdir(int fd, char *address) {
 	struct IOParameter param;
 
 	param.fd = fd;
-	param.address = NULL;
-	param.numBytes = offset;
+	param.address = address;
+	param.numBytes = 0;
 
 	fdd = open("/proc/ramdisk", O_RDONLY);
 	ret = ioctl(fdd, RD_READDIR, &param);

@@ -478,7 +478,7 @@ int getFreeBlock(void) {
 		return -1;
 	}
 
-	for (i = 0; i < FB_PARTITION; i++) {
+	for (i = 0; i < FBARR; i++) {
 		byte = ramdisk->bb.byte[(i / 8)];
 		offset = 7 - (i % 8);
 
@@ -1598,9 +1598,9 @@ int initializeRAMDISK(void) {
 	/* Initialize the root at ramdisk[0] with size 0 */
 	setDirInode(0, 0);
 	/* Initialize Number of Available Free Inodes */
-	ramdisk->sb.numFreeInodes = IB_PARTITION - 1;
+	ramdisk->sb.numFreeInodes = IBARR - 1;
 	/* Initialize Number of Available Free Blocks */
-	ramdisk->sb.numFreeBlocks = FB_PARTITION;
+	ramdisk->sb.numFreeBlocks = FBARR;
 	return 0;
 }
 
