@@ -18,14 +18,7 @@
 #define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  // Max file size
 #define MAXFCT	1024 														 // Max file count
 
-#define DPTR1 0
-#define DPTR2 1
-#define DPTR3 2
-#define DPTR4 3
-#define DPTR5 4
-#define DPTR6 5
-#define DPTR7 6
-#define DPTR8 7
+#define DPTR  0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 #define RPTR  8
 #define RRPTR 9
 

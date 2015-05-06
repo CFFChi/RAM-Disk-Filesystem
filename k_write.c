@@ -15,7 +15,7 @@ int plusParentInodeSize(short targetIndex, short* parentInodes) {
 	int ret, size;
 	short root;
 
-	// printk("target in plusParent: %d\n", targetIndex);
+	printk("target in plusParent: %d\n", targetIndex);
 
 	root = 0; size = 1;
 	/* Get the directories to the file from root and store it and its size into array */

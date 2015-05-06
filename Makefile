@@ -13,6 +13,9 @@ clean:
 
 pull:
 	scp mando@csa2.bu.edu:/home/ugrad/mando/CS552/ramdisk/* .
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	gcc -g -o ramdisk_test ramdisk_test.c ramdisk_ioctl.c
+	insmod ramdisk_module.ko
 
 update:
 	rmmod ramdisk_module

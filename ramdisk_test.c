@@ -26,7 +26,7 @@
 
 // #define TEST1
 #define TEST2
-#define TEST3     // Test 3 is dependent on Test 2
+// #define TEST3     // Test 3 is dependent on Test 2
 // #define TEST4
 // #define TEST5
 

@@ -442,96 +442,74 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 	return -1;
 }
 
-int searchParentInodes(short iIndex, short targetInode, int *size, short* parentInodes) {
-	int i, j, k, l, ret;
-	struct Inode *inode;
-	struct DirBlock *dirBlock;
-	struct PtrBlock *ptrBlock;
-	union Block *location, *singlePtr, *doublePtr;
+int searchParentInodes(short iIndex, short targetInode, int *pIndex, short* parentInodes) {
+	short entryInode;
+	int i, j, k, l;
 
-	printk("Inside searchParentInodes\n");
-
-	inode = &(ramdisk->ib[iIndex]);
-	if (strncmp(inode->type, "reg", 3) == 0) {
+	if (strncmp(ramdisk->ib[iIndex].type, "reg", 3) == 0) {
 		printk("searchParentInodes() Error : File is not a directory file\n");
 		return -1;
 	}
 
 	for (i = 0; i < NUMPTRS; i++) {
-		location = inode->location[i];
-		if (0 <= i && i <= 7) {
-			if (location == 0) { continue; }
+		switch (i) {
+			case DPTR: {
+				if (ramdisk->ib[iIndex].location[i] == 0) { continue; }
 
-			// printk("Yep\n");
-
-			dirBlock = &(location->dir);
-
-			for (k = 0; k < NUMEPB; k++) {
-				if (dirBlock->entry[k].inode == targetInode) { return 1; }
-
-				// printk("entry inode: %d\n", dirBlock->entry[k].inode);
-
-				parentInodes[*size] = dirBlock->entry[k].inode;
-				*size = *size + 1;
-				if ((ret = searchParentInodes(dirBlock->entry[k].inode, targetInode, size, parentInodes)) == 1) {
-					return 1;
+				for (j = 0; j < NUMEPB; j++) {
+					entryInode = (*ramdisk->ib[iIndex].location[i]).dir.entry[j].inode;
+					if (entryInode == targetInode) { return 1; }
+					parentInodes[*pIndex] = entryInode;
+					*pIndex += 1;
+					if (searchParentInodes(entryInode, targetInode, pIndex, parentInodes)) { return 1; }
+					*pIndex -= 1;
+					parentInodes[*pIndex] = 0;
+					continue;
 				}
-				*size = *size - 1;
-				parentInodes[*size] = 0;
 			}
-		}
+			
+			case RPTR: {
+				if (ramdisk->ib[iIndex].location[i] == 0) { continue; }
+				for (j = 0; j < NODESZ; j++) {
+					if ((*ramdisk->ib[iIndex].location[i]).ptr.location[j] == 0) { continue; }	
 
-		if (8 <= i && i <= 9) {
-			if (location == 0) { continue; }
-
-			ptrBlock = &(location->ptr);
-
-			for (j = 0; j < NODESZ; j++) {
-				singlePtr = ptrBlock->location[j];
-				if (singlePtr == 0) { continue; }
-
-				dirBlock = &(singlePtr->dir);
-
-				if (i == 8) {
 					for (k = 0; k < NUMEPB; k++) {
-						if (dirBlock->entry[k].inode == targetInode) { return 1; }
-
-						parentInodes[*size] = dirBlock->entry[k].inode;
-						*size = *size + 1;
-						if ((ret = searchParentInodes(dirBlock->entry[k].inode, targetInode, size, parentInodes)) == 1) {
-							return 1;
-						}
-						*size = *size - 1;
-						parentInodes[*size] = 0;
+						entryInode = (*(*ramdisk->ib[iIndex].location[i]).ptr.location[j]).dir.entry[k].inode;
+						if (entryInode == targetInode) { return 1; }
+						parentInodes[*pIndex] = entryInode;
+						*pIndex += 1;
+						if (searchParentInodes(entryInode, targetInode, pIndex, parentInodes)) { return 1; }
+						*pIndex = *pIndex - 1;
+						parentInodes[*pIndex] = 0;
+						continue;
 					}
 				}
+			}
 
-				if (i == 9) {
+			case RRPTR: {
+				if (ramdisk->ib[iIndex].location[i] == 0) { continue; }
+				for (j = 0; j < NODESZ; j++) {
+					if ((*ramdisk->ib[iIndex].location[i]).ptr.location[j] == 0) { continue; }	
+
 					for (k = 0; k < NODESZ; k++) {
+						if ((*(*ramdisk->ib[iIndex].location[i]).ptr.location[j]).ptr.location[k] == 0) { continue;}
 
-						doublePtr = singlePtr->ptr.location[k];
-						if (doublePtr == 0) { continue;	}
-
-						dirBlock = &(doublePtr->dir);
-
-						for (l = 0; l < NUMEPB; k++) {
-							if (dirBlock->entry[l].inode == targetInode) { return 1; }
-
-							parentInodes[*size] = dirBlock->entry[l].inode;
-							*size = *size + 1;
-							if ((ret = searchParentInodes(dirBlock->entry[l].inode, targetInode, size, parentInodes)) == 1) {
-								return 1;
-							}
-							*size = *size - 1;
-							parentInodes[*size] = 0;
+						for (l = 0; l < NUMEPB; l++) {
+							entryInode = (*(*ramdisk->ib[iIndex].location[i]).ptr.location[j]).ptr.location[k]->dir.entry[l].inode;
+							if (entryInode == targetInode) { return 1; }
+							parentInodes[*pIndex] = entryInode;
+							*pIndex += 1;
+							if (searchParentInodes(entryInode, targetInode, pIndex, parentInodes)) { return 1; }
+							*pIndex = *pIndex - 1;
+							parentInodes[*pIndex] = 0;
+							continue;
 						}
 					}
 				}
 			}
 		}
 	}
-	/* Could not find target index node */
-	return 0;
+	return 0; 
 }
 
 int adjustPosition(short iIndex, unsigned char* data) {
