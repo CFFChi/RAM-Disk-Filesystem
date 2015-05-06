@@ -45,16 +45,6 @@
 #define SET_BIT_MASK1(x) (0x01 << (7-x))		// Sets bit x to 1 and remaining bits to 0
 #define SET_BIT_MASK0(x) (~SET_BIT_MASK1(x))	// Sets bit x to 0 and remaining bits to 1
 
-/* ioctl Functions */
-int initializeRAMDISK(void);
-int k_creat(char* pathname);
-int k_mkdir(char* pathname);
-int k_open(char* pathname);
-int k_close(int fd);
-int k_read(int fd, char* address, int numBytes);
-int k_write(int fd, char* address, int numBytes);
-int k_unlink(char* pathname);
-int k_lseek(int fd, int offset);
 
 /* FileDescriptor - Keeps track of opened files on a per-process basis
  *		rPosition : Current read position of a file
@@ -180,3 +170,36 @@ struct IOParameter {
 	char *address;
 	int numBytes;
 };
+
+/* ioctl Functions */
+int initializeRAMDISK(void);
+int k_creat(char* pathname);
+int k_mkdir(char* pathname);
+int k_open(char* pathname);
+int k_close(int fd);
+int k_read(int fd, char* address, int numBytes);
+int k_write(int fd, char* address, int numBytes);
+int k_unlink(char* pathname);
+int k_lseek(int fd, int offset);
+int k_readdir(int fd, char* address);
+
+/* Helper Functions */
+int isEmpty(union Block *location);
+void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) ;
+void setDirEntryLocation(short iIndex, int bIndex, int eIndex, char*filename, short newInode);
+void setSinglePtrLocation(short iIndex, int ptrIndex, short fIndex);
+void setDirEntrySinglePtrLocationEntry(short iIndex, int ptrIndex, int eIndex, char* filename, short newInode);
+void setDoublePtr1Location(short iIndex, int ptrIndex, short fIndex);
+void setDoublePtr2Location(short iIndex, int ptrIndex1, int ptrIndex2, short fIndex);
+void setDirEntryDoublePtrLocation(short iIndex, int ptrIndex1, int ptrIndex2, int eIndex, char* filename, short newInode);
+void setRootInode(int iIndex, int size);
+int getInode(int index, char* pathname);
+int fileExists(char *pathname, char* lastPath, short* parentInode);
+int getFreeInode(void);
+int getFreeBlock(void);
+int assignInode(short parentInode, short newInode, char *filename, int dirFlag);
+int searchParentInodes(short iIndex, short targetInode, int *size, short* parentInodes);
+int adjustPosition(short iIndex, unsigned char* data);
+
+
+
