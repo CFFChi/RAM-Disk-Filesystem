@@ -50,8 +50,6 @@ int rd_close(int fd) {
 	return ret;
 }
 
-
-
 int rd_read(int fd, char *address, int numBytes) {
 	int ret, fdd;
 	struct IOParameter param;
@@ -101,7 +99,6 @@ int rd_lseek(int fd, int offset) {
 	return ret;
 }
 
-
 int rd_unlink(char *pathname) {
 	int fd, ret;
 	printf("Calling rd_unlink()...\n");
@@ -114,12 +111,11 @@ int rd_unlink(char *pathname) {
 }
 
 int rd_readdir(int fd, char *address) {
+	int ret, fdd;
+	struct IOParameter param;
 	printf("Calling rd_readdir()...\n");
 	// printf("fd: %d\n", fd);
 	// printf("address: %s\n", address);
-
-	int ret, fdd;
-	struct IOParameter param;
 
 	param.fd = fd;
 	param.address = address;

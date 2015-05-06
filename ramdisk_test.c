@@ -25,9 +25,9 @@
 // comment out a test if you do not wish to perform it
 
 // #define TEST1
-#define TEST2
-#define TEST3     // Test 3 is dependent on Test 2
-// #define TEST4
+// #define TEST2
+// #define TEST3     // Test 3 is dependent on Test 2
+#define TEST4
 // #define TEST5
 
 #define USE_RAMDISK
@@ -321,17 +321,17 @@ int main () {
 
   memset (addr, 0, sizeof(addr)); /* Clear scratchpad memory */
 
-  // while ((retval = READDIR (fd, addr))) { /* 0 indicates end-of-file */
+  while ((retval = READDIR (fd, addr))) { /* 0 indicates end-of-file */
 
-  //   if (retval < 0) {
-  //     fprintf (stderr, "readdir: Directory read error! status: %d\n",
-	 //       retval);
-  //     exit(EXIT_FAILURE);
-  //   }
+    if (retval < 0) {
+      fprintf (stderr, "readdir: Directory read error! status: %d\n",
+	       retval);
+      exit(EXIT_FAILURE);
+    }
 
-  //   index_node_number = atoi(&addr[14]);
-  //   printf ("Contents at addr: [%s,%d]\n", addr, index_node_number);
-  // }
+    index_node_number = atoi(&addr[14]);
+    printf ("Contents at addr: [%s,%d]\n", addr, index_node_number);
+  }
 
 #endif // TEST4
 

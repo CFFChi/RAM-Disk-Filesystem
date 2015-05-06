@@ -1438,6 +1438,89 @@ int k_lseek(int fd, int offset) {
 	return 0;
 }
 
+int readDirEntry(short iIndex, int filePos, struct DirEntry *dirEntry) {
+	int possibleSize;
+	unsigned char *data; 
+	struct DirEntry *tempDirEntry; 
+
+	data = (unsigned char *) kmalloc(MAXFSZ, GFP_KERNEL);
+
+	if ((possibleSize = adjustPosition(iIndex, data)) == 0) {
+		return 0; 
+	} 
+
+	if (filePos >= possibleSize - 1) {
+		printk("readDirEntry() Error : File position is greater than possible size\n");
+		return -1; 
+	}
+
+	while ((filePos + NUMEPB) <= possibleSize) {
+		tempDirEntry = (struct DirEntry *) kmalloc(sizeof(struct DirEntry), GFP_KERNEL);
+		memcpy(tempDirEntry, data + filePos, NUMEPB); 
+
+		if (tempDirEntry->inode == 0) {
+			filePos += NUMEPB;
+		} else {
+			memcpy(dirEntry, tempDirEntry, NUMEPB);
+			fdTable[iIndex]->filePos = filePos + NUMEPB;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+/* http://www.jb.man.ac.uk/~slowe/cpp/itoa.html */
+char* itoa(int val, int base){
+	int i;
+	static char buf[32] = {0};
+	i = 30;
+	for(; val && i ; --i, val /= base) {
+		buf[i] = "0123456789abcdef"[val % base];
+	}
+	// printk("buf: %s\n", &buf[i+1]);
+	return &buf[i+1];
+}
+
+int k_readdir(int fd, char* address) {
+	int ret; 
+	struct DirEntry *dirEntry; 
+
+	char inodeStr[2];
+	char *inodePtr = inodeStr;
+
+	dirEntry = (struct DirEntry *) kmalloc(sizeof(struct DirEntry), GFP_KERNEL);
+
+	if (fdTable[fd] == NULL) {
+		printk("k_readdir() Error : File descriptor is not valid\n");
+		return -1;
+	}
+
+	if (strncmp(ramdisk->ib[fd].type, "dir", 3)) {
+		printk("k_readdir() Error : File at given address is not a directory file\n");
+		return -1; 
+	}
+
+	if ((ret = readDirEntry(fd, fdTable[fd]->filePos, dirEntry)) < 0) {
+		printk("k_readdir() Error : Could not find read directory entry\n");
+		return -1;
+	} else if (ret == 0) {
+		return 0;
+	}
+
+
+	memcpy(inodePtr, itoa(dirEntry->inode, 10), 2);
+	printk("inodeStr: %s\n", inodeStr);
+	// printk("filename : %s\n", dirEntry->filename);
+
+	memcpy(address, dirEntry, 14);
+	// NEED TO PAD 14 - addressLength to store inode number at address[14]
+	strcat(address, inodeStr);
+	printk("address : %s\n", address);
+
+	return 1;
+}
+
 void cleanInfo(struct IoctlInfo *info) {
 	/* Clean up information to prepare for next command */
 	info->size = 0;
@@ -1458,6 +1541,7 @@ void cleanParam(struct IOParameter *param) {
 /***** Ramdisk Entry Point *****/
 static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg) {
 	int ret, fd;
+	char *readdirAddress; 
 	struct IoctlInfo info;
 	struct IOParameter param;
 
@@ -1579,6 +1663,20 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			ret = k_unlink(info.pathname);
 			cleanInfo(&info);
 			return ret;
+			break;
+
+		case RD_READDIR: 
+			printk("\nCase: RD_READDIR()...\n");
+			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
+
+			printk("<1> param->fd : %d\n", param.fd);
+			printk("<1> param->address : %x\n", param.address);
+			printk("<1> param->numBytes (offset) : %d\n", param.numBytes);
+
+			readdirAddress = (char *) kmalloc(BLKSZ, GFP_KERNEL);
+			ret = k_readdir(param.fd, readdirAddress);
+			cleanParam(&param);
+			return ret; 
 			break;
 
 		default:

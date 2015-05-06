@@ -1,24 +1,22 @@
-//Each define with suffix SZ refers to the number of bytes.
-
-#define RDSKSZ 2097152
+#define RDSKSZ 	2097152
 #define BLKSZ	256
-#define BTMPSZ (4 * BLKSZ)
-#define NODESZ 64
+#define BTMPSZ 	(4 * BLKSZ)
+#define NODESZ 	64
 
-#define NUMEPB 16  // max entries per directory block; BLKSZ/(size of dirEntry)
-#define NUMPTRS 10  // number of pointers for location field in inode
+#define NUMEPB 		16  // max entries per directory block; BLKSZ/(size of dirEntry)
+#define NUMPTRS 	10  // number of pointers for location field in inode
 #define NUMDPTRS	8  // number of direct pointers
 
 #define FNAMESZ 14  //max filename size
-#define DBLKSZ (NUMDPTRS * BLKSZ) //total size of blocks pointed to by direct pointers in location
+#define DBLKSZ 	(NUMDPTRS * BLKSZ) //total size of blocks pointed to by direct pointers in location
 
-#define IBARR 1024  //num nodes in Inode array
-#define FBARR (RDSKSZ/BLKSZ - (1 + 256 + 4)) //num blocks in File array
+#define IBARR 	1024  	// num nodes in Inode array
+#define FBARR 	(RDSKSZ/BLKSZ - (1 + 256 + 4)) //num blocks in File array
 #define IBARRSZ (IBARR * NODESZ)
 #define FBARRSZ (FBARR * BLKSZ)
 
-#define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  //max file size
-#define MAXFCT	1024 //max file count
+#define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  // Max file size
+#define MAXFCT	1024 														 // Max file count
 
 #define DPTR1 0
 #define DPTR2 1
@@ -28,20 +26,20 @@
 #define DPTR6 5
 #define DPTR7 6
 #define DPTR8 7
-#define RPTR 8
+#define RPTR  8
 #define RRPTR 9
 
 /* ioctl Macro Definition */
-#define MAGIC_NUMBER 155
-#define RD_CREAT    _IOR(MAGIC_NUMBER, 0, char *)
-#define RD_MKDIR	_IOR(MAGIC_NUMBER, 1, char *)
-#define RD_OPEN	    _IOR(MAGIC_NUMBER, 2, char *)
-#define RD_CLOSE	_IOR(MAGIC_NUMBER, 3, int)
-#define RD_READ		_IOR(MAGIC_NUMBER, 4, struct IOParameter)
+#define MAGIC_NUMBER 222
+#define RD_CREAT     _IOR(MAGIC_NUMBER, 0, char *)
+#define RD_MKDIR	 _IOR(MAGIC_NUMBER, 1, char *)
+#define RD_OPEN	     _IOR(MAGIC_NUMBER, 2, char *)
+#define RD_CLOSE	 _IOR(MAGIC_NUMBER, 3, int)
+#define RD_READ		 _IOR(MAGIC_NUMBER, 4, struct IOParameter)
 #define RD_WRITE	_IOWR(MAGIC_NUMBER, 5, struct IOParameter)
-#define RD_LSEEK	_IOR(MAGIC_NUMBER, 6, struct IOParameter)
-#define RD_UNLINK 	_IOR(MAGIC_NUMBER, 7, char *)
-#define RD_READDIR 	_IOR(MAGIC_NUMBER, 8, struct IOParameter)
+#define RD_LSEEK	 _IOR(MAGIC_NUMBER, 6, struct IOParameter)
+#define RD_UNLINK 	 _IOR(MAGIC_NUMBER, 7, char *)
+#define RD_READDIR 	 _IOR(MAGIC_NUMBER, 8, struct IOParameter)
 
 /* Bitmap Operation */
 #define SET_BIT_MASK1(x) (0x01 << (7-x))		// Sets bit x to 1 and remaining bits to 0
