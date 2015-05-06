@@ -263,7 +263,7 @@ int removeRegEntry(struct Inode *inode) {
 	}
 
 	/* Set the memory of index node to zero */
-	memset(inode, 0, sizeof(struct Inode));
+	memset(inode, 0, NODESZ));
 	return 0;
 }
 
@@ -386,7 +386,7 @@ int getInode(int index, char* pathname) {
 	return 0;
 }
 
-int fileExists(char *pathname, char* lastPath, short* parentInode) {
+int fileExists(char *pathname, char* filename, short* parentInode) {
 	unsigned int size;
 	char *path, *subpath;
 	int index, currentIndex;
@@ -435,7 +435,7 @@ int fileExists(char *pathname, char* lastPath, short* parentInode) {
 			printk("fileExists() Error : Could not get inode from pathname\n");
 			return -1;
 		}
-		strncpy(lastPath, path, size);
+		strncpy(filename, path, size);
 		*parentInode = index;
 		printk("parentInode after: %d\n", *parentInode);
 		if (currentIndex > 0) {
@@ -474,7 +474,7 @@ int getFreeBlock(void) {
 	unsigned char offset;
 
 	if (ramdisk->sb.numFreeBlocks == 0) {
-		printk("getFreeBlock() Error : There is no more free block in ramdisk\n");
+		printk("getFreeBlock() Error : There are no more free blocks in ramdisk\n");
 		return -1;
 	}
 
@@ -499,7 +499,8 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 	// printk("parentinode in assignInode: %d\n", parentInode);
 
 	/* Loop through block locations[10] */
-	for (i = 0; i < NODESZ; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
+
 		/* Index Node Block is Fully Available*/
 		if (ramdisk->ib[parentInode].location[i] == 0) {
 			// printk("assignInode %d\n", i);
@@ -519,7 +520,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 			/* Assign free block to block location i */
 			ramdisk->ib[parentInode].location[i] = &ramdisk->fb[freeBlock];
 
-			/* Direct Block Pointers locatoin[0 ~ 7] */
+			/* Direct Block Pointers location[0 ~ 7] */
 			if (0 <= i && i <= 7) {
 				/* Insert an entry into the FreeBlock of Parent Directory */
 				// printk("got here\n");
@@ -621,7 +622,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 				if (i == 9) {
 					for (j = 0; j < NODESZ; j++) {
 						/* There is no second redirection block */
-						if (((*ramdisk->ib[parentInode].location[9]).ptr.location[j]) == 0) {
+						if (((*ramdisk->ib[parentInode].location[i]).ptr.location[j]) == 0) {
 							if ((fbSingle = getFreeBlock()) < 0) {
 								printk("assignInode() Error : Could not find free block1 in ramdisk (i=9)\n");
 								return -1;
@@ -923,7 +924,7 @@ int k_unlink(char* pathname) {
 			}
 
 			/* Set the index node to zero */
-			memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
+			memset(&ramdisk->ib[index], 0, NODESZ);
 
 			/* Increment number of free index node */
 			ramdisk->sb.numFreeInodes++;
@@ -978,14 +979,14 @@ int k_mkdir(char* pathname) {
 
 	/* Retrieve the directory's parent directory  */
 	if ((ret = fileExists(pathname, dirName, &parentInode)) != 0) {
-		printk("k_creat() Error : File already exists or Error in fileExists()\n");
+		printk("k_mkdir() Error : File already exists or Error in fileExists()\n");
 		return -1;
 	}
 
 	printk("Creating directory : %s\n", dirName);
 
 	if ((freeInode = getFreeInode()) < 0) {
-		printk("k_creat() Error : Could not find free index node\n");
+		printk("k_mkdir() Error : Could not find free index node\n");
 		return -1;
 	}
 
@@ -1005,20 +1006,20 @@ int k_mkdir(char* pathname) {
 
 int k_creat(char* pathname) {
 	short parentInode;
-	int ret, freeInode;
-	char* fileName;
+	int freeInode;
+	char* filename;
 
 	parentInode = 0;
 
-	fileName = (char *) kmalloc(14, GFP_KERNEL);
+	filename = (char *) kmalloc(14, GFP_KERNEL);
 
 	/* Retrieve last directory entry in pathname and store in parentInode */
-	if ((ret = fileExists(pathname, fileName, &parentInode)) != 0) {
+	if ((fileExists(pathname, filename, &parentInode)) != 0) {
 		printk("k_creat() Error : File already exists or Error in fileExists()\n");
 		return -1;
 	}
 
-	printk("Creating %s...\n", fileName);
+	printk("Creating %s...\n", filename);
 
 	if ((freeInode = getFreeInode()) < 0) {
 		printk("k_creat() Error : Could not find free index node\n");
@@ -1028,7 +1029,7 @@ int k_creat(char* pathname) {
 	// printk("freeInode in creat: %d\n", freeInode);
 	setRegInode(freeInode, 0);
 	// printk("parentInode : %d\n", parentInode);
-	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
+	if ((assignInode(parentInode, freeInode, filename, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
 		return -1;
 	}
@@ -1510,7 +1511,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		case RD_CLOSE:
 			printk("\nCase : RD_CLOSE()...\n");
 
-			copy_from_user(&fd, (int *)arg, sizeof(int));
+			copy_from_user(&fd, (int *)arg, `sizeof`(int));
 			// printk("<1> fd : %d\n", fd);
 
 			ret = k_close(fd);
@@ -1589,12 +1590,12 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 int initializeRAMDISK(void) {
 	/* Create the Ramdisk skeleton */
-	if (!(ramdisk = (struct Ramdisk *) vmalloc(sizeof(struct Ramdisk)))) {
+	if (!(ramdisk = (struct Ramdisk *) vmalloc(RDSKSZ)) {
 		printk("initializeRAMDISK() Error: Could not vmalloc ramdisk\n");
 		return 1;
 	}
 	/* Initialize the Ramdisk with Zeros*/
-	memset(ramdisk, 0, sizeof(struct Ramdisk));
+	memset(ramdisk, 0, RDSKSZ);
 	/* Initialize the root at ramdisk[0] with size 0 */
 	setDirInode(0, 0);
 	/* Initialize Number of Available Free Inodes */
@@ -1605,7 +1606,7 @@ int initializeRAMDISK(void) {
 }
 
 /***** Ioctl Entry Point *****/
-static int __init initialiaze_routine(void) {
+static int __init initialize_routine(void) {
 	int ret;
 	printk("<1> Loading Ramdisk File System Module...\n");
 
@@ -1636,5 +1637,5 @@ static void __exit cleanup_routine(void) {
 	return;
 }
 
-module_init(initialiaze_routine);
+module_init(initialize_routine);
 module_exit(cleanup_routine);

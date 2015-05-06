@@ -125,7 +125,7 @@ struct DirEntry {
 
 /* Directory File Block
  *		entry : Array of directory entries containing filename and inode information
- *    size of DFB is sizeof(dirEntry) (16) * sizeof(NUMEPB) (16) = 256, or BLKSZ
+ *    size of DFB is sizeof(dirEntry) (16) * NUMEPB (16) = 256, or BLKSZ
  *
  */
 struct DirBlock {
