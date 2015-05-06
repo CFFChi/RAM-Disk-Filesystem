@@ -22,7 +22,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 int isEmpty(union Block *location) {
 	// printk("check empty\n");
 	int i = 0;
-	while (i < SIZEOF_BLOCK) {
+	while (i < BLKSZ) {
 		if (location->reg.data[i] != 0) {
 			return 0;
 		}
@@ -59,7 +59,7 @@ void cleanupDirLocation(union Block *location) {
 	unsigned char byte, offset;
 
 	/* Retrieve element index in free block */
-	bIndex = (location - ramdisk->fb) / SIZEOF_BLOCK;
+	bIndex = (location - ramdisk->fb) / BLKSZ;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
 	byte = ramdisk->bb.byte[bIndex / 8];
 	offset = SET_BIT_MASK0(bIndex % 8);
@@ -77,7 +77,7 @@ void cleanupDirLocation(union Block *location) {
 int removeDirEntry(short iIndex, char* filename) {
 
 	int i, j, k, l;
-	struct InodeBlock *inode;
+	struct Inode *inode;
 	struct DirBlock *dirBlock;
 	struct PtrBlock *ptrBlock;
 	union Block *location, *singlePtr, *doublePtr;
@@ -91,7 +91,7 @@ int removeDirEntry(short iIndex, char* filename) {
 		return -1;
 	}
 
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 		location = inode->location[i];
 
 		if (0 <= i && i <= 7) {
@@ -100,7 +100,7 @@ int removeDirEntry(short iIndex, char* filename) {
 			// printk("here\n");
 			dirBlock = &(location->dir);
 
-			for (j = 0; j < SIZEOF_DIR_BLOCK; j++) {
+			for (j = 0; j < NUMEPB; j++) {
 
 				// printk("i: %d, j: %d\n", i , j);
 				// printk("Comparison1: %s AND %s\n", dirBlock->entry[j].filename, filename);
@@ -119,7 +119,7 @@ int removeDirEntry(short iIndex, char* filename) {
 
 			ptrBlock = &(location->ptr);
 
-			for (j = 0; j < SIZEOF_PTR; j++) {
+			for (j = 0; j < NODESZ; j++) {
 
 				singlePtr = ptrBlock->location[j];
 				if (singlePtr == 0) { continue; }
@@ -128,7 +128,7 @@ int removeDirEntry(short iIndex, char* filename) {
 
 				/* Single Redirection Block */
 				if (i == 8) {
-					for (k = 0; k < SIZEOF_DIR_BLOCK; k++) {
+					for (k = 0; k < NUMEPB; k++) {
 						// printk("Comparison2: %s AND %s\n", dirBlock->entry[k].filename, filename);
 						if ((strncmp(dirBlock->entry[k].filename, filename, 14)) == 0) {
 
@@ -148,14 +148,14 @@ int removeDirEntry(short iIndex, char* filename) {
 				}
 				/* Double Redirection Block */
 				if (i == 9) {
-					for (k = 0; k < SIZEOF_PTR; k++) {
+					for (k = 0; k < NODESZ; k++) {
 						doublePtr = singlePtr->ptr.location[k];
 						if (doublePtr == 0) { continue; }
 
 						dirBlock = &(doublePtr->dir);
 
 						/* Depth Two */
-						for (l = 0; l < SIZEOF_DIR_BLOCK; l++) {
+						for (l = 0; l < NUMEPB; l++) {
 							printk("Comparison3: %s AND %s\n", dirBlock->entry[l].filename, filename);
 							if (strncmp(dirBlock->entry[l].filename, filename, 14) == 0) {
 								memset(&(dirBlock->entry[l]), 0, sizeof(struct DirEntry));
@@ -192,9 +192,9 @@ void cleanupRegLocation(union Block *location) {
 	printk("inside cleanupRegLocation\n");
 
 	/* Set the block bytes to zero */
-	memset(location->reg.data, 0, SIZEOF_BLOCK);
+	memset(location->reg.data, 0, BLKSZ);
 	/* Retrieve element index in free block */
-	bIndex = (location - ramdisk->fb) / SIZEOF_BLOCK;
+	bIndex = (location - ramdisk->fb) / BLKSZ;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
 	byte = ramdisk->bb.byte[bIndex / 8];
 	offset = SET_BIT_MASK0(bIndex % 8);
@@ -207,14 +207,16 @@ void cleanupRegLocation(union Block *location) {
 	return;
 }
 
-int removeRegEntry(struct InodeBlock *inode) {
+#define VAL 1 | 2
+
+int removeRegEntry(struct Inode *inode) {
 
 	int i, j, k;
 	union Block* location, *singlePtr, *doublePtr;
 
 	printk("in removeRegEntry\n");
 
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 
 		location = inode->location[i];
 
@@ -231,7 +233,7 @@ int removeRegEntry(struct InodeBlock *inode) {
 		} else {
 			if (i == 8) {
 				/*　Remove file blocks inside Single Redirection Block */
-				for (j = 0; j < SIZEOF_PTR; j++) {
+				for (j = 0; j < NODESZ; j++) {
 						singlePtr = ((*inode->location[8]).ptr.location[j]);
 						if (singlePtr == 0) { break; }
 						cleanupRegLocation(singlePtr);
@@ -242,11 +244,11 @@ int removeRegEntry(struct InodeBlock *inode) {
 
 			if (i == 9) {
 				/* Depth One of Double Redirection Block */
-				for (j = 0; j < SIZEOF_PTR; j++) {
+				for (j = 0; j < NODESZ; j++) {
 					singlePtr = ((*inode->location[9]).ptr.location[j]);
 					if (singlePtr == 0) { break; }
 					/* Remove all files in Second pointer of Double Redirection Blocks */
-					for (k = 0; k < SIZEOF_PTR; k++) {
+					for (k = 0; k < NODESZ; k++) {
 						doublePtr = ((*(*inode->location[9]).ptr.location[j]).ptr.location[k]);
 						if (doublePtr == 0) { break; }
 						cleanupRegLocation(doublePtr);
@@ -261,7 +263,7 @@ int removeRegEntry(struct InodeBlock *inode) {
 	}
 
 	/* Set the memory of index node to zero */
-	memset(inode, 0, sizeof(struct InodeBlock));
+	memset(inode, 0, sizeof(struct Inode));
 	return 0;
 }
 
@@ -304,7 +306,7 @@ int getInode(int index, char* pathname) {
 	int i, j, k, l;
 	char* file;
 	union Block *location, *singlePtr, *doublePtr;
-	struct InodeBlock *inode;
+	struct Inode *inode;
 
 	printk("index1: %d\n", index);
 
@@ -318,7 +320,7 @@ int getInode(int index, char* pathname) {
 		return -1;
 	}
 
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 
 
 		location = inode->location[i];
@@ -326,7 +328,7 @@ int getInode(int index, char* pathname) {
 		if (0 <= i && i <= 7) {
 			if (location != 0) {
 				file = location->reg.data;
-				for (j = 0; j < SIZEOF_DIR_BLOCK; j++) {
+				for (j = 0; j < NUMEPB; j++) {
 					// printk("i : %d, j: %d\n", i, j);
 					if (file != 0) {
 						// printk("Comparing1 %s AND %s\n", location->dir.entry[j].filename, pathname);
@@ -344,14 +346,14 @@ int getInode(int index, char* pathname) {
 
 			if (location == 0) { continue; }
 			// printk("here\n");
-			for (j = 0; j < SIZEOF_PTR; j++) {
+			for (j = 0; j < NODESZ; j++) {
 				singlePtr = location->ptr.location[j];
 				if (singlePtr == 0) { continue; }
 
 				// printk("i: %d\n", i);
 				/* Single-Indirect Block Pointer */
 				if (i == 8) {
-					for (k = 0; k < SIZEOF_DIR_BLOCK; k++) {
+					for (k = 0; k < NUMEPB; k++) {
 						if (singlePtr->reg.data != 0) {
 							// printk("Comparison2:  %s AND %s\n", singlePtr->dir.entry[k].filename, pathname);
 							if (strncmp(singlePtr->dir.entry[k].filename, pathname, 14) == 0) {
@@ -362,12 +364,12 @@ int getInode(int index, char* pathname) {
 				}
 				/* Double-Indirect Block Pointer */
 				if (i == 9) {
-					for (k = 0; k < SIZEOF_PTR; k++) {
+					for (k = 0; k < NODESZ; k++) {
 						doublePtr = singlePtr->ptr.location[k];
 						if (doublePtr == 0) { continue; }
 
 						printk("i: %d, j: %d, k: %d\n", i,j, k);
-						for (l = 0; l < SIZEOF_DIR_BLOCK; l++) {
+						for (l = 0; l < NUMEPB; l++) {
 							if (doublePtr->reg.data != 0) {
 								// printk("Comparison3:  %s AND %s\n", doublePtr->dir.entry[l].filename, pathname);
 								if (strncmp(doublePtr->dir.entry[l].filename, pathname, 14) == 0) {
@@ -455,7 +457,7 @@ int getFreeInode(void) {
 	}
 
 	/* Return index node  */
-	for (i = 0; i < MAX_FILE_COUNT; i++) {
+	for (i = 0; i < MAXFCT; i++) {
 		// printk("IB[%d].type : %s\n", i, ramdisk->ib[i].type);
 		if (ramdisk->ib[i].type[0] == 0) {
 			ramdisk->sb.numFreeInodes--;
@@ -497,7 +499,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 	// printk("parentinode in assignInode: %d\n", parentInode);
 
 	/* Loop through block locations[10] */
-	for (i = 0; i < SIZEOF_PTR; i++) {
+	for (i = 0; i < NODESZ; i++) {
 		/* Index Node Block is Fully Available*/
 		if (ramdisk->ib[parentInode].location[i] == 0) {
 			// printk("assignInode %d\n", i);
@@ -579,7 +581,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 
 			if (0 <= i && i <= 7) {
 				/* DirBlock has 16 entries */
-				for (j = 0; j < SIZEOF_DIR_BLOCK; j++) {
+				for (j = 0; j < NUMEPB; j++) {
 					// printk("already    i : %d, j : %d\n\n", i, j);
 					// printk("inode already: %d\n", (*ramdisk->ib[parentInode].location[i]).dir.entry[j].inode);
 
@@ -592,7 +594,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 				}
 			} else {
 				if (i == 8) {
-					for (j = 0; j < SIZEOF_PTR; j++) {
+					for (j = 0; j < NODESZ; j++) {
 						/* We found an empty pointer location */
 						if ((*ramdisk->ib[parentInode].location[8]).ptr.location[j] == 0) {
 							/* Get a Free Block to Assign a Singe Pointer */
@@ -607,7 +609,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 						}
 						/* Loop through the pointer location directory entries to find a free slot */
 						else {
-							for (k = 0; k < SIZEOF_DIR_BLOCK; k++) {
+							for (k = 0; k < NUMEPB; k++) {
 								if ((*(*ramdisk->ib[parentInode].location[8]).ptr.location[j]).dir.entry[k].inode == 0) {
 									setDirEntrySinglePtrLocationEntry(parentInode, j, k, filename, newInode);
 									return 0;
@@ -617,7 +619,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 					}
 				}
 				if (i == 9) {
-					for (j = 0; j < SIZEOF_PTR; j++) {
+					for (j = 0; j < NODESZ; j++) {
 						/* There is no second redirection block */
 						if (((*ramdisk->ib[parentInode].location[9]).ptr.location[j]) == 0) {
 							if ((fbSingle = getFreeBlock()) < 0) {
@@ -637,7 +639,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 						}
 						/* Probe into second redirection block as it is present*/
 						else {
-							for (k = 0; k < SIZEOF_PTR; k++) {
+							for (k = 0; k < NODESZ; k++) {
 								/* No Directory Block inside this redirection block */
 								if ((*(*ramdisk->ib[parentInode].location[9]).ptr.location[j]).ptr.location[k] == 0) {
 									if ((fbSingle = getFreeBlock()) < 0) {
@@ -650,7 +652,7 @@ int assignInode(short parentInode, short newInode, char *filename, int dirFlag) 
 								}
 								/* Directory Block is inside this redirection block */
 								else {
-									for (l = 0; l < SIZEOF_DIR_BLOCK; l++) {
+									for (l = 0; l < NUMEPB; l++) {
 										if (((*(*(*ramdisk->ib[parentInode].location[9]).ptr.location[j]).ptr.location[k]).dir.entry[l].inode) == 0) {
 											setDirEntryDoublePtrLocation(parentInode, j, k, l, filename, newInode);
 											return 0;
@@ -742,7 +744,7 @@ int modifyParentInodeMinus(char *pathname, int blkSize) {
 
 int searchParentInodes(short iIndex, short targetInode, int *size, short* parentInodes) {
 	int i, j, k, l, ret;
-	struct InodeBlock *inode;
+	struct Inode *inode;
 	struct DirBlock *dirBlock;
 	struct PtrBlock *ptrBlock;
 	union Block *location, *singlePtr, *doublePtr;
@@ -755,7 +757,7 @@ int searchParentInodes(short iIndex, short targetInode, int *size, short* parent
 		return -1;
 	}
 
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 		location = inode->location[i];
 
 		// printk("Here1\n");
@@ -767,7 +769,7 @@ int searchParentInodes(short iIndex, short targetInode, int *size, short* parent
 
 			dirBlock = &(location->dir);
 
-			for (k = 0; k < SIZEOF_DIR_BLOCK; k++) {
+			for (k = 0; k < NUMEPB; k++) {
 				if (dirBlock->entry[k].inode == targetInode) { return 1; }
 
 				// printk("entry inode: %d\n", dirBlock->entry[k].inode);
@@ -790,14 +792,14 @@ int searchParentInodes(short iIndex, short targetInode, int *size, short* parent
 
 			ptrBlock = &(location->ptr);
 
-			for (j = 0; j < SIZEOF_PTR; j++) {
+			for (j = 0; j < NODESZ; j++) {
 				singlePtr = ptrBlock->location[j];
 				if (singlePtr == 0) { continue; }
 
 				dirBlock = &(singlePtr->dir);
 
 				if (i == 8) {
-					for (k = 0; k < SIZEOF_DIR_BLOCK; k++) {
+					for (k = 0; k < NUMEPB; k++) {
 						if (dirBlock->entry[k].inode == targetInode) { return 1; }
 
 						parentInodes[*size] = dirBlock->entry[k].inode;
@@ -811,14 +813,14 @@ int searchParentInodes(short iIndex, short targetInode, int *size, short* parent
 				}
 
 				if (i == 9) {
-					for (k = 0; k < SIZEOF_PTR; k++) {
+					for (k = 0; k < NODESZ; k++) {
 
 						doublePtr = singlePtr->ptr.location[k];
 						if (doublePtr == 0) { continue;	}
 
 						dirBlock = &(doublePtr->dir);
 
-						for (l = 0; l < SIZEOF_DIR_BLOCK; k++) {
+						for (l = 0; l < NUMEPB; k++) {
 							if (dirBlock->entry[l].inode == targetInode) { return 1; }
 
 							parentInodes[*size] = dirBlock->entry[l].inode;
@@ -921,7 +923,7 @@ int k_unlink(char* pathname) {
 			}
 
 			/* Set the index node to zero */
-			memset(&ramdisk->ib[index], 0, sizeof(struct InodeBlock));
+			memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
 
 			/* Increment number of free index node */
 			ramdisk->sb.numFreeInodes++;
@@ -1084,24 +1086,24 @@ int adjustPosition(short iIndex, unsigned char* data) {
 	union Block *location, *singlePtr, *doublePtr1, *doublePtr2;
 
 	size = 0;
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 		location = ramdisk->ib[iIndex].location[i];
 		if (location == 0) { return size; }
 
 		if (0 <= i && i <= 7) {
 			data = data + size;
-			memcpy(data, location, SIZEOF_BLOCK);
-			size += SIZEOF_BLOCK;
+			memcpy(data, location, BLKSZ);
+			size += BLKSZ;
 
 		} else {
-			for (j = 0; j < SIZEOF_PTR; j++) {
+			for (j = 0; j < NODESZ; j++) {
 				/* Single Redirection*/
 				if (i == 8) {
 					singlePtr = (*ramdisk->ib[8].location[i]).ptr.location[j];
 					if (singlePtr == 0) { return size; }
 					data = data + size;
-					memcpy(data, singlePtr, SIZEOF_BLOCK);
-					size += SIZEOF_BLOCK;
+					memcpy(data, singlePtr, BLKSZ);
+					size += BLKSZ;
 				}
 
 				/* Double Redirection */
@@ -1109,13 +1111,13 @@ int adjustPosition(short iIndex, unsigned char* data) {
 					doublePtr1 = (*ramdisk->ib[9].location[i]).ptr.location[j];
 					if (doublePtr1 == 0) { return size; }
 
-					for (k = 0; k < SIZEOF_PTR; k++) {
+					for (k = 0; k < NODESZ; k++) {
 						doublePtr2 = (*(*ramdisk->ib[9].location[i]).ptr.location[j]).ptr.location[k];
 						if (doublePtr2 == 0) { return size; }
 
 						data = data + size;
-						memcpy(data, doublePtr2, SIZEOF_BLOCK);
-						size += SIZEOF_BLOCK;
+						memcpy(data, doublePtr2, BLKSZ);
+						size += BLKSZ;
 					}
 				}
 			}
@@ -1128,7 +1130,7 @@ int readFile(short iIndex, int filePos, unsigned char *data, int size) {
 	int newSize, possibleSize, maxSize;
 	unsigned char *newData;
 
-	newData = (unsigned char *) kmalloc(MAX_FILE_SIZE, GFP_KERNEL);
+	newData = (unsigned char *) kmalloc(MAXFSZ, GFP_KERNEL);
 	possibleSize = adjustPosition(iIndex, newData) - 1;
 	newSize = filePos + size;
 
@@ -1179,13 +1181,13 @@ int k_read(int fd, char* address, int size) {
 	numBytes = 0;
 	totalBytes = 0;
 
-	data = (unsigned char *) kmalloc(SIZEOF_DIRECT_PTR, GFP_KERNEL);
+	data = (unsigned char *) kmalloc(DBLKSZ, GFP_KERNEL);
 
 	while (position < size) {
 		dataSize = size - position;
 
-		if (dataSize > SIZEOF_DIRECT_PTR) {
-			dataSize = SIZEOF_DIRECT_PTR;
+		if (dataSize > DBLKSZ) {
+			dataSize = DBLKSZ;
 		}
 		if ((numBytes = readFile(fd, fdTable[fd]->filePos, data, dataSize)) < 0) {
 			printk("k_write() Error : Could not compute number of bytes written to file\n");
@@ -1213,7 +1215,7 @@ int write(short iIndex, unsigned char *data, int size) {
 	/* Set the number of btyes we need to write */
 	bytesToWrite = size;
 
-	for (i = 0; i < SIZEOF_LOCATION; i++) {
+	for (i = 0; i < NUMPTRS; i++) {
 		location = ramdisk->ib[iIndex].location[i];
 		/* Check if there is anything allocated in this location */
 		if (location == 0) {
@@ -1229,7 +1231,7 @@ int write(short iIndex, unsigned char *data, int size) {
 				/* Compute the remaining data size to write */
 				newSize = size - position;
 				/* Size of remaining is larger than 256 bytes */
-				if (newSize > SIZEOF_BLOCK) { newSize = SIZEOF_BLOCK; }
+				if (newSize > BLKSZ) { newSize = BLKSZ; }
 				/* Offset the data by the data size */
 				data = data + newSize;
 				/* Write the data into the regular block of this location */
@@ -1239,13 +1241,13 @@ int write(short iIndex, unsigned char *data, int size) {
 				/* Compute the remaining bytes we have to write */
 				bytesToWrite -= position;
 				/* Check if the data is written to  */
-				if (bytesToWrite < SIZEOF_BLOCK) {
+				if (bytesToWrite < BLKSZ) {
 					return 0;
 				}
 			}
 			/* Redirection Block : location[8] and location[9] */
 			else {
-				for (j = 0; j < SIZEOF_PTR; j++) {
+				for (j = 0; j < NODESZ; j++) {
 					singlePtr = (*ramdisk->ib[iIndex].location[i]).ptr.location[j];
 					/* Check if there is anything allocated in this redirection block */
 					if (singlePtr == 0) {
@@ -1260,20 +1262,20 @@ int write(short iIndex, unsigned char *data, int size) {
 					/* Single Redirection Block case */
 					if (i == 8) {
 						newSize = size - position;
-						if (newSize > SIZEOF_BLOCK) {
-							newSize = SIZEOF_BLOCK;
+						if (newSize > BLKSZ) {
+							newSize = BLKSZ;
 						}
 						data = data + newSize;
 						/* Write the data into the regular block of this single redirection block */
 						memcpy((*(*ramdisk->ib[iIndex].location[8]).ptr.location[j]).reg.data, data, newSize);
 						position += newSize;
-						if ((size - position) < SIZEOF_BLOCK) {
+						if ((size - position) < BLKSZ) {
 							return 0;
 						}
 					}
 					/* Double Redirection Block case */
 					if (i == 9) {
-						for (k = 0; k < SIZEOF_PTR; k++) {
+						for (k = 0; k < NODESZ; k++) {
 							doublePtr = ((*(*ramdisk->ib[iIndex].location[9]).ptr.location[j]).ptr.location[k]);
 							/* Check if there is anything allocated in the double redirection block */
 							if (doublePtr == 0) {
@@ -1287,8 +1289,8 @@ int write(short iIndex, unsigned char *data, int size) {
 								/* Compute the size of the data */
 								newSize = size - position;
 								/* Size of data is larger than 256 bytes */
-								if (newSize > SIZEOF_BLOCK) {
-									newSize = SIZEOF_BLOCK;
+								if (newSize > BLKSZ) {
+									newSize = BLKSZ;
 								}
 								/* Offset the data by the data size */
 								data = data + newSize;
@@ -1297,7 +1299,7 @@ int write(short iIndex, unsigned char *data, int size) {
 								/* Reposition by the size of the data */
 								position += newSize;
 								/* Check if this is the last block of the location */
-								if ((size - position) < SIZEOF_BLOCK) {
+								if ((size - position) < BLKSZ) {
 									return 0;
 								}
 							}
@@ -1328,22 +1330,22 @@ int writeFile(short iIndex, int filePos, unsigned char *data, int dataSize) {
 	newSize = filePos + dataSize;
 
 	/* File position exceeds the maximum allowed size */
-	if (newSize > MAX_FILE_SIZE) {
+	if (newSize > MAXFSZ) {
 		/* Write to temporary data container displaced by filePos whatever is possible */
-		memcpy(newData + filePos, data, (MAX_FILE_SIZE - filePos));
+		memcpy(newData + filePos, data, (MAXFSZ - filePos));
 		/* Perform the actual write into ramdisk */
-		if ((ret = write(iIndex, newData, MAX_FILE_SIZE)) < 0) {
+		if ((ret = write(iIndex, newData, MAXFSZ)) < 0) {
 			printk("writeFile() Error : Could not write file\n");
 			return -1;
 		}
 		/* Traverse through the parent directories and increase their size by the data size */
-		if ((ret = modifyParentInodePlus(iIndex, MAX_FILE_SIZE)) < 0) {
+		if ((ret = modifyParentInodePlus(iIndex, MAXFSZ)) < 0) {
 			printk(" writeFile() Error : Could not modify parent inode\n");
 			return -1;
 		}
 		/* Set the file position to the end */
-		fdTable[iIndex]->filePos = MAX_FILE_SIZE;
-		return (MAX_FILE_SIZE - filePos);
+		fdTable[iIndex]->filePos = MAXFSZ;
+		return (MAXFSZ - filePos);
 	}
 
 	/* Data fits into the data block */
@@ -1383,14 +1385,14 @@ int k_write(int fd, char* address, int numBytes) {
 	}
 	/* Initialize these values */
 	dataSize = 0; position = 0; totalBytes = 0;
-	data = (unsigned char *) kmalloc(SIZEOF_DIRECT_PTR, GFP_KERNEL);
+	data = (unsigned char *) kmalloc(DBLKSZ, GFP_KERNEL);
 	/* Write data until position reaches the size of the data */
 	while (position < numBytes) {
 		/* Compute the remaining data size to write */
 		dataSize = numBytes - position;
 		/* Set data size as size of direct pointer if too big */
-		if (dataSize > SIZEOF_DIRECT_PTR) {
-			dataSize = SIZEOF_DIRECT_PTR;
+		if (dataSize > DBLKSZ) {
+			dataSize = DBLKSZ;
 		}
 		/* Write the data in address displaced by position into temporary data container */
 		memcpy(data, address + position, dataSize);

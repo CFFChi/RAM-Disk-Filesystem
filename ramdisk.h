@@ -65,7 +65,7 @@ int k_lseek(int fd, int offset);
  */
  struct FileDescriptor {
  	int filePos;
- 	struct InodeBlock *inodePtr;
+ 	struct Inode *inodePtr;
  };
 
 /* ioctlInfo - Container to store parameters from user-space
@@ -134,6 +134,7 @@ struct DirBlock {
 
 /* Pointer to File Block
  *		*blocks : Pointer to the file
+ *    size is ptr size (4B) * NODESZ (64) = 256, or BLKSZ
  */
 struct PtrBlock {
 	union Block *location[NODESZ];
@@ -160,8 +161,8 @@ union Block {
 /*
  * RamDisk (Size: 2MB) contains
  *		SuperBlock 	(Size: 1 block)
- *		InodeBlock 	(Size: 256 InodeBlocks)
- *		BitmapBlock (Size: 4 blocks)
+ *		Inode 	(Size: 256 Inodes)
+ *		Bitmap (Size: 4 blocks)
  *		FreeBlock	(Size: (2MB - 256(1+256+4)))
  */
 struct Ramdisk {
