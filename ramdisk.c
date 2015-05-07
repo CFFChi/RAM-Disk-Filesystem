@@ -167,9 +167,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		case RD_READDIR: 
 			printk("\nCase: RD_READDIR()...\n");
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
-			// printk("<1> param->fd : %d\n", param.fd);
-			// printk("<1> param->address : %x\n", param.address);
-			// printk("<1> param->numBytes (offset) : %d\n", param.numBytes);
+			printk("<1> param->fd : %d\n", param.fd);
+			printk("<1> param->address : %x\n", param.address);
+			printk("<1> param->numBytes (offset) : %d\n", param.numBytes);
 
 			retAddress = (char *) kmalloc(NUMEPB, GFP_KERNEL);
 			ret = k_readdir(param.fd, retAddress);

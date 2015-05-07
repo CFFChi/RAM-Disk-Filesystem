@@ -25,18 +25,14 @@ int isEmpty(union Block *location) {
 }
 
 void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) {
-	printk("fIndex: %d\n", fIndex);
-	printk("eIndex: %d\n", eIndex);
 	memcpy(ramdisk->fb[fIndex].dir.entry[eIndex].filename, filename, 14);
 	ramdisk->fb[fIndex].dir.entry[eIndex].inode = newInode;
 	return;
 }
 
 void setDirEntryLocation(short iIndex, int bIndex, int eIndex, char*filename, short newInode) {
-	printk("set\n");
 	memcpy((*ramdisk->ib[iIndex].location[bIndex]).dir.entry[eIndex].filename, filename, 14);
 	(*ramdisk->ib[iIndex].location[bIndex]).dir.entry[eIndex].inode = newInode;
-	printk("setDir filename: %s\n", (*ramdisk->ib[iIndex].location[bIndex]).dir.entry[eIndex].filename);
 	return;
 }
 
@@ -70,7 +66,7 @@ int getInode(int index, char* pathname) {
 	union Block *location, *singlePtr, *doublePtr;
 	struct Inode *inode;
 
-	printk("index1: %d\n", index);
+	// printk("index1: %d\n", index);
 
 	inode = &(ramdisk->ib[index]);
 
@@ -167,7 +163,6 @@ int fileExists(char *pathname, char* lastPath, short* parentInode) {
 
 	// printk("parentInode before: %d\n", *parentInode);
 
-
 	while ((subpath = strchr(pathname, '/')) != NULL) {
 		size = subpath - pathname;
 
@@ -185,14 +180,13 @@ int fileExists(char *pathname, char* lastPath, short* parentInode) {
 		}
 	}
 
-	// printk("pathname after while: %s\n", pathname);
 
 	if (*pathname == '\0') {
 		printk("fileExists() Error : Last character of path is /\n");
 		return -1;
 	} else {
 		strncpy(path, pathname, size);
-		printk("pathname: %s\n", path);
+		// printk("path: %s\n", path);
 		if ((currentIndex = getInode(index, path)) < 0) {
 			printk("fileExists() Error : Could not get inode from pathname\n");
 			return -1;
@@ -292,9 +286,6 @@ int assignInode(short pIndex, short newInode, char *filename, int dirFlag) {
 				case DPTR: {	
 					// printk("DPTR FREE\n");
 					setDirEntry(fbDirect, 0, filename, newInode);
-					// if (!dirFlag) {
-					// 	setDirEntryLocation(pIndex, fbDirect, 0, filename, newInode);
-					// }
 					return 0; 
 				}
 				continue;
@@ -333,9 +324,9 @@ int assignInode(short pIndex, short newInode, char *filename, int dirFlag) {
 		} else {
 			switch (i) {
 				case DPTR: {
-					printk("DPTR ALLOC\n");
+					// printk("DPTR ALLOC\n");
 					for (j = 0; j < NUMEPB; j++) {
-						printk("j in RRPTR: %d\n", j);
+						// printk("j in RRPTR: %d\n", j);
 						entryInode = (*ramdisk->ib[pIndex].location[i]).dir.entry[j].inode;
 						if (entryInode == 0) {
 							setDirEntryLocation(pIndex, i, j, filename, newInode);
@@ -345,20 +336,18 @@ int assignInode(short pIndex, short newInode, char *filename, int dirFlag) {
 					continue;
 				}
 				case RPTR: {
-					printk("RPTR ALLOC\n");
+					// printk("RPTR ALLOC\n");
 					for (j = 0; j < NODESZ; j++) {
-						printk("j in RRPTR: %d\n", j);
+						// printk("j in RRPTR: %d\n", j);
 						if ((*ramdisk->ib[pIndex].location[8]).ptr.location[j] == 0) {
 							if ((fbSingle = getFreeBlock()) < 0) {
 								printk("assignInode() Error : Could not find free block in ramdisk (fbSingle)\n");
 								return -1;
 							} 
-							printk("Here1\n");
 							assignInodeRPTR(pIndex, j, fbSingle);
 							setDirEntry(fbSingle, 0, filename, newInode);
 							return 0;
 						} else {
-							printk("Here2\n");
 							for (k = 0; k < NUMEPB; k++) {
 								entryInode = (*(*ramdisk->ib[pIndex].location[8]).ptr.location[j]).dir.entry[k].inode;
 								if (entryInode == 0) {
@@ -493,13 +482,13 @@ int adjustPosition(short iIndex, unsigned char* data) {
 	size = 0;
 	for (i = 0; i < NUMPTRS; i++) {
 		location = ramdisk->ib[iIndex].location[i];
+		// printk("size: %d\n", size);
 		if (location == 0) { return size; }
 
 		if (0 <= i && i <= 7) {
 			data = data + size;
-			memcpy(data, location, BLKSZ);
+			memcpy(data, location, 14);
 			size += BLKSZ;
-
 		} else {
 			for (j = 0; j < NODESZ; j++) {
 				/* Single Redirection*/
@@ -530,7 +519,6 @@ int adjustPosition(short iIndex, unsigned char* data) {
 	}
 	return size;
 }
-
 
 EXPORT_SYMBOL(isEmpty);
 EXPORT_SYMBOL(setDirEntry);

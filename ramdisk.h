@@ -179,7 +179,6 @@ int k_readdir(int fd, char* address);
 /* Helper Functions */
 int isEmpty(union Block *location);
 void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) ;
-void setDirEntryLocation(short iIndex, int bIndex, int eIndex, char*filename, short newInode);
 void setSinglePtrLocation(short iIndex, int ptrIndex, short fIndex);
 void setDirEntrySinglePtrLocationEntry(short iIndex, int ptrIndex, int eIndex, char* filename, short newInode);
 void setDoublePtr1Location(short iIndex, int ptrIndex, short fIndex);
