@@ -39,10 +39,11 @@ int k_creat(char* pathname) {
 		printk("k_creat() Error : Could not find free index node\n");
 		return -1;
 	}
-	// printk("availability in k_creat: %d\n", ramdisk->sb.numFreeInodes);
-	// printk("freeInode in creat: %d\n", freeInode);
+
+	printk("here1\n");
 	setRegInode(freeInode, 0);
-	// printk("parentInode : %d\n", parentInode);
+	printk("here2\n");
+
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
 		return -1;
