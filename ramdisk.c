@@ -263,7 +263,7 @@ int removeRegEntry(struct Inode *inode) {
 	}
 
 	/* Set the memory of index node to zero */
-	memset(inode, 0, NODESZ));
+	memset(inode, 0, NODESZ);
 	return 0;
 }
 
@@ -1511,7 +1511,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		case RD_CLOSE:
 			printk("\nCase : RD_CLOSE()...\n");
 
-			copy_from_user(&fd, (int *)arg, `sizeof`(int));
+			copy_from_user(&fd, (int *)arg, sizeof(int));
 			// printk("<1> fd : %d\n", fd);
 
 			ret = k_close(fd);
@@ -1590,7 +1590,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 int initializeRAMDISK(void) {
 	/* Create the Ramdisk skeleton */
-	if (!(ramdisk = (struct Ramdisk *) vmalloc(RDSKSZ)) {
+	if (!(ramdisk = (struct Ramdisk *) vmalloc(RDSKSZ))) {
 		printk("initializeRAMDISK() Error: Could not vmalloc ramdisk\n");
 		return 1;
 	}
