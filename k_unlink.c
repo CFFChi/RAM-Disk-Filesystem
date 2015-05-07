@@ -218,33 +218,29 @@ int removeRegEntry(short index) {
 	return 0;
 }
 
-int minusParentInodeSize(char* pathname, char* path, int* currentInode, int blkSize) {
-	unsigned int size;
-	char *subpath;
-	int index;
+int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int blkSize) {
+	int index, pathSize;
+	char *tempPath, *subPath; 
 
-	index = 0;
+	index = 0; pathSize = 0; pathName++;
+	tempPath = (char *) kmalloc(14, GFP_KERNEL);
 
-	// printk("before while: %s\n", pathname);
+	/* Walk through the absolute pathName split up with / character */
+	while ((subPath = strchr(pathName, '/')) != NULL) {
+		pathSize = subPath - pathName;
 
-	/* Disregard the root character '/' */
-	pathname++;
-
-	/* Walk through the absolute pathname split up with / character */
-	while ((subpath = strchr(pathname, '/')) != NULL) {
-		size = subpath - pathname;
-		if (size < 1 || size > 14) {
+		if (1 > pathSize || pathSize > 14) {
 			printk("minusParentInodeSize() Error: Pathname is too small or too big (14 character max)\n");
 			return -1;
 		} else {
-			strncpy(path, pathname, size);
-			path[size] = '\0';
-			pathname = subpath;
-			if ((index = getInode(index, subpath)) < 0) {
-				printk("minusParentInodeSize() Error: Could not get inode from pathname\n");
+			strncpy(tempPath, pathName, pathSize);
+			tempPath[pathSize] = '\0';
+			pathName = subPath + 1;
+			if ((index = getInode(index, tempPath)) < 0) {
+				printk("minusParentInodeSize() Error: Could not get inode from pathName\n");
 				return -1;
 			}
-			memcpy(&currentInode, &index, sizeof(int));
+			*currentInode = index;
 			/* Reduce the size of current index node by blkSize */
 			ramdisk->ib[index].size = ramdisk->ib[index].size - blkSize;
 		}
@@ -252,45 +248,42 @@ int minusParentInodeSize(char* pathname, char* path, int* currentInode, int blkS
 	return 0;
 }
 
-int modifyParentInodeMinus(char *pathname, int blkSize) {
-	int ret;
-	int index;
-	char* path;
+int modifyParentInodeMinus(char *pathName, int blkSize) {
+	int ret, index, pathSize;
+	char* lastPath;
 
-	// printk("pathname in modifyParentInodeMinus(): %s\n", pathname);
-
-	/* Error checking for valid input  */
-	if (pathname[0] != '/' || strlen(pathname) < 2) {
-		printk("fileExist() Error: Invalid pathname\n");
+	/* Check that the file is not the root */
+	if (pathName[0] != '/') {
+		printk("fileExists() Error : path requires the root character\n");
+		return -1;
+	}
+	/* Check that path name is valid */
+	if ((pathSize = strlen(pathName)) < 2) {
+		printk("fileExists() Error : path requires a file name following the root character\n");
 		return -1;
 	}
 
-	index = 0;
-	path = (char *) kmalloc(14, GFP_KERNEL);
+	index = 0; 
+	lastPath = (char *) kmalloc(14, GFP_KERNEL);
 
 	/* Reduce the size of inode in root by blkSize */
 	ramdisk->ib[index].size = ramdisk->ib[index].size - blkSize;
 
 	/* Recursively go through each parent and reduce each inode by blkSize */
-	if ((ret = minusParentInodeSize(pathname, path, &index, blkSize)) < 0) {
+	if ((ret = minusParentInodeSize(pathName, lastPath, &index, blkSize)) < 0) {
 		printk("modifyParentInode() Error : Could not properly decrease parent inode size\n");
 		return -1;
 	}
 
-	// printk("ret in modifyParentInode: %d\n", ret);
-	// printk("%s\n", (*ramdisk->ib[0].location[0]).dir.entry[0].filename);
-	// printk("index %d\n", index);
-
-	if (*pathname == '\0') {
+	if (pathName[0] == '\0') {
+		printk("fileExists() Error : Last character of path name is /\n");
 		return -1;
-	} else {
-		strncpy(path, pathname, 14);
-		printk("path  in modifyMinus: %s\n", path++);
-		return removeDirEntry(index, path);
 	}
+	strncpy(lastPath, pathName, 14);
+	return removeDirEntry(index, lastPath);
 }
 
-int k_unlink(char* pathname) {
+int k_unlink(char* pathName) {
 	int index, ret;
 	short parentInode;
 	char* filename;
@@ -299,12 +292,12 @@ int k_unlink(char* pathname) {
 	filename = (char *) kmalloc(14, GFP_KERNEL);
 
 	/* Check that the file is not the root */
-	if (!strncmp(pathname, "/\0", 2)) {
+	if (!strncmp(pathName, "/\0", 2)) {
 		printk("k_unlink() Error : You can not delete the root\n");
 		return -1;
 	}
 	/* Check that the file exists */
-	if ((index = fileExists(pathname, filename, &parentInode)) <= 0) {
+	if ((index = fileExists(pathName, filename, &parentInode)) <= 0) {
 		printk("k_unlink() Error : File does not exist\n");
 		return -1;
 	}
@@ -334,7 +327,7 @@ int k_unlink(char* pathname) {
 	/* Regular File */
 	else if (!strncmp(ramdisk->ib[index].type, "reg", 3)) {
 		/* Modify/Remove index node entries in parent directory of file */
-		if ((ret = modifyParentInodeMinus(pathname, ramdisk->ib[index].size)) != 0) {
+		if ((ret = modifyParentInodeMinus(pathName, ramdisk->ib[index].size)) != 0) {
 			printk("k_unlink() Error : Could not modify the information of parent index nodes\n");
 			return -1;
 		}

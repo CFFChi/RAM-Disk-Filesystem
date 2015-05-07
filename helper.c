@@ -183,7 +183,7 @@ int getInode(int index, char* targetFilename) {
 int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	int index, currentIndex;
 	unsigned int pathSize;
-	char* tempPath, *subpath;
+	char* tempPath, *subPath;
 
 	if (pathName[0] != '/') {
 		printk("fileExists() Error : Pathname requires the root character\n");
@@ -197,17 +197,15 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	index = 0; currentIndex = 0; pathName++;
 	tempPath = (char *) kmalloc(14, GFP_KERNEL);
 
-	while ((subpath = strchr(pathName, '/')) != NULL) {
-		pathSize = subpath - pathName; 
+	while ((subPath = strchr(pathName, '/')) != NULL) {
+		pathSize = subPath - pathName; 
 		if (1 > pathSize || pathSize > 14) {
 			printk("fileExists() Error : Could not parse pathName / invalid input\n");
 			return -1;
 		} else {
-			printk("PathName in While: %s\n", pathName);
 			strncpy(tempPath, pathName, pathSize);
 			tempPath[pathSize] = '\0';
-			pathName = subpath + 1;
-			printk("tempPath: %s\n", tempPath);
+			pathName = subPath + 1;
 			if ((index = getInode(index, tempPath)) < 0) {
 				printk("fileExists() Error : Could not get index from file name: %s\n", tempPath);
 				return -1;
@@ -443,7 +441,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 
 int adjustPosition(short index, unsigned char* data) {
 	int i, j, k, possibleSize; 
-	
+
 	possibleSize = 0; 
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {
