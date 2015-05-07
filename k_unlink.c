@@ -65,6 +65,7 @@ int removeDirEntry(short index, char* targetFilename) {
 
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[i]->ptr.location[j] == 0) { continue; }
+
 					for (k = 0; k < NUMEPB; k++) {
 						entry = ramdisk->ib[index].location[8]->ptr.location[j]->dir.entry[k];
 						if (!strncmp(entry.filename, targetFilename, 14)) {
@@ -90,8 +91,10 @@ int removeDirEntry(short index, char* targetFilename) {
 
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) { continue; }
+
 					for (k = 0; k < NODESZ; k++) {
 						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) { continue; }
+
 						for (l = 0; l < NUMEPB; l++) {
 							entry = ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]->dir.entry[l];
 							if (!strncmp(entry.filename, targetFilename, 14)) {
@@ -114,6 +117,7 @@ int removeDirEntry(short index, char* targetFilename) {
 					}
 					return 0;
 				}
+				continue;
 			}
 		}
 	}
@@ -246,6 +250,7 @@ int modifyParentInodeMinus(char *pathName, int blkSize) {
 		printk("fileExists() Error : Last character of path name is /\n");
 		return -1;
 	}
+
 	strncpy(lastPath, pathName, 14);
 	return removeDirEntry(index, lastPath);
 }
@@ -293,6 +298,9 @@ int k_unlink(char* pathName) {
 	}
 	/* Regular File */
 	else if (!strncmp(ramdisk->ib[index].type, "reg", 3)) {
+
+		printk("PathName: %s\n", pathName);
+
 		/* Modify/Remove index node entries in parent directory of file */
 		if ((ret = modifyParentInodeMinus(pathName, ramdisk->ib[index].size)) != 0) {
 			printk("k_unlink() Error : Could not modify the information of parent index nodes\n");

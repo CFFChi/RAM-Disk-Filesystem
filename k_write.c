@@ -11,239 +11,212 @@
 extern struct Ramdisk *ramdisk;
 extern struct FileDescriptor *fdTable[1024];
 
+void writeToRegDataDPTR(int index, int i, unsigned char* dataChunk, int size) {
+	memcpy((*ramdisk->ib[index].location[i]).reg.data, dataChunk, size);
+	return;
+}
+
+void writeToRegDataRPTR(int index, int pIndex, unsigned char* dataChunk, int size) {
+	memcpy((*(*ramdisk->ib[index].location[8]).ptr.location[pIndex]).reg.data, dataChunk, size);
+	return;
+}
+
+void writeToRegDataRRPTR(int index, int p1, int p2, unsigned char* dataChunk, int size) {
+	memcpy((*(*(*ramdisk->ib[index].location[9]).ptr.location[p1]).ptr.location[p2]).reg.data, dataChunk, size);
+	return;
+}
+
 int plusParentInodeSize(short targetIndex, short* parentInodes) {
-	int ret, size;
-	short root;
-
-	printk("target in plusParent: %d\n", targetIndex);
-
+	int ret, size, root;
 	root = 0; size = 1;
-	/* Get the directories to the file from root and store it and its size into array */
+	/* Get the directories to the file from root and store it  into dst array */
 	if ((ret = searchParentInodes(root, targetIndex, &size, parentInodes)) < 0) {
 		printk("plusParentInodeSize() Error : Could not get parent directories\n");
 		return -1;
 	}
-
 	return size;
 }
 
-int modifyParentInodePlus(short iIndex, int fileSize) {
+int modifyParentInodePlus(short index, int fileSize) {
 	int i, oldSize, ret;
-	short index;
 	short parentInodes[256];
 
-	printk("index: %d\n", iIndex);
-	printk("fileSize : %d\n", fileSize);
-
-	/* Increase the parent directories by the size of the file */
-	if ((ret = plusParentInodeSize(iIndex, parentInodes)) < 0) {
+	/* Build an array of parent directories */
+	if ((ret = plusParentInodeSize(index, parentInodes)) < 0) {
 		printk("modifyParentInodePlus() Error : Could not increase parent inode size\n");
 		return -1;
 	}
-
-	if (ret <= 0) {
-		printk("modifyParentInodePlus() Error : Size of parent node array is 0\n");
-		return -1;
-	}
-
-	// printk("numParents: %d\n", ret);
-
 	/* Go through the parent directory and increase file size */
 	for (i = 0; i < ret; i++) {
-		index = parentInodes[i];
-		oldSize = ramdisk->ib[index].size;
+		oldSize = ramdisk->ib[parentInodes[i]].size;
 		ramdisk->ib[index].size = oldSize + fileSize;
 	}
-
 	/* Finally, increase the size at the index of the file */
-	ramdisk->ib[iIndex].size = fileSize;
+	ramdisk->ib[index].size = fileSize;
 	return 0;
 }
 
-
-int write(short iIndex, unsigned char *data, int size) {
-
+int write(short index, unsigned char *data, int size) {
 	int i, j, k;
-	int newSize, position, bytesToWrite;
-	int freeBlock, fbSingle, fbDouble;
-	union Block *location, *singlePtr, *doublePtr;
+	int newSize, position, remainingBytes; 
+	int fbDirect, fbSingle, fbDouble1, fbDouble2; 
 
-	/* Initialize the position as 0 */
-	position = 0;
-	/* Set the number of btyes we need to write */
-	bytesToWrite = size;
-
+	position = 0; remainingBytes = size; 
 	for (i = 0; i < NUMPTRS; i++) {
-		location = ramdisk->ib[iIndex].location[i];
-		/* Check if there is anything allocated in this location */
-		if (location == 0) {
-			/* Find and get a free block */
-			if ((freeBlock = getFreeBlock()) < 0) {
-				printk("write() Error : Could not find free block\n");
+		if (ramdisk->ib[index].location[i] == 0) {
+			if ((fbDirect = getFreeBlock()) < 0) {
+				printk("write() Error : Could find a free block to allocate\n");
 				return -1;
 			}
-			/* Assign this free block to this location */
-			ramdisk->ib[iIndex].location[i] = &ramdisk->fb[freeBlock];
-			/* Direct Pointer : location[0] to location[7] */
-			if (0 <= i && i <= 7) {
-				/* Compute the remaining data size to write */
-				newSize = size - position;
-				/* Size of remaining is larger than 256 bytes */
-				if (newSize > BLKSZ) { newSize = BLKSZ; }
-				/* Offset the data by the data size */
-				data = data + newSize;
-				/* Write the data into the regular block of this location */
-				memcpy((*ramdisk->ib[iIndex].location[i]).reg.data, data, newSize);
-				/* Reposition by the size of data */
-				position += newSize;
-				/* Compute the remaining bytes we have to write */
-				bytesToWrite -= position;
-				/* Check if the data is written to  */
-				if (bytesToWrite < BLKSZ) {
-					return 0;
+			assignFreeBlockDPTR(index, i, fbDirect);
+
+			switch (i) {
+				case DPTR1: 
+				case DPTR2: 
+				case DPTR3: 
+				case DPTR4: 
+				case DPTR5: 
+				case DPTR6: 
+				case DPTR7: 
+				case DPTR8: {
+					if ((newSize = size - position) > BLKSZ) { 
+						newSize = BLKSZ;
+					}
+					data = data + newSize; 
+					writeToRegDataDPTR(index, i, data, newSize);
+					position += newSize;
+					if ((remainingBytes -= position) < BLKSZ) { return 0; }
+					continue;
 				}
-			}
-			/* Redirection Block : location[8] and location[9] */
-			else {
-				for (j = 0; j < NODESZ; j++) {
-					singlePtr = (*ramdisk->ib[iIndex].location[i]).ptr.location[j];
-					/* Check if there is anything allocated in this redirection block */
-					if (singlePtr == 0) {
-						/* Find and get a free block */
-						if ((fbSingle = getFreeBlock()) < 0) {
-							printk("write() Error : Could not find free block\n");
-							return -1;
-						}
-						/* Assign this free block to this redirection block */
-						ramdisk->ib[iIndex].location[i]->ptr.location[j] = &ramdisk->fb[fbSingle];
-					}
-					/* Single Redirection Block case */
-					if (i == 8) {
-						newSize = size - position;
-						if (newSize > BLKSZ) {
-							newSize = BLKSZ;
-						}
-						data = data + newSize;
-						/* Write the data into the regular block of this single redirection block */
-						memcpy((*(*ramdisk->ib[iIndex].location[8]).ptr.location[j]).reg.data, data, newSize);
-						position += newSize;
-						if ((size - position) < BLKSZ) {
-							return 0;
+
+				case RPTR: {
+					for (j = 0; j < NODESZ; j++) {
+						if ((*ramdisk->ib[index].location[8]).ptr.location[j] == 0) {
+							if ((fbSingle = getFreeBlock()) < 0) {
+								printk("write() Error : Could not find a free block to allocate\n");
+								return -1;
+							}
+							assignFreeBlockRPTR(index, j, fbSingle);
+
+							if ((newSize = size - position) > BLKSZ) {
+								newSize = BLKSZ;
+							}
+							data = data + newSize;
+							writeToRegDataRPTR(index, j, data, newSize);
+							position += newSize;
+							if ((remainingBytes -= position) < BLKSZ) { return 0; }
 						}
 					}
-					/* Double Redirection Block case */
-					if (i == 9) {
-						for (k = 0; k < NODESZ; k++) {
-							doublePtr = ((*(*ramdisk->ib[iIndex].location[9]).ptr.location[j]).ptr.location[k]);
-							/* Check if there is anything allocated in the double redirection block */
-							if (doublePtr == 0) {
-								/* Find and get a free block */
-								if ((fbDouble = getFreeBlock()) < 0) {
-									printk("write() Error : Could not find free block\n");
-									return -1;
-								}
-								/* Assign this free block to the double redirection block */
-								ramdisk->ib[iIndex].location[9]->ptr.location[j]->ptr.location[k] = &ramdisk->fb[fbDouble];
-								/* Compute the size of the data */
-								newSize = size - position;
-								/* Size of data is larger than 256 bytes */
-								if (newSize > BLKSZ) {
-									newSize = BLKSZ;
-								}
-								/* Offset the data by the data size */
-								data = data + newSize;
-								/* Write the data into the regular block of this double redirection block */
-								memcpy((*(*(*ramdisk->ib[iIndex].location[9]).ptr.location[j]).ptr.location[k]).reg.data, data, newSize);
-								/* Reposition by the size of the data */
-								position += newSize;
-								/* Check if this is the last block of the location */
-								if ((size - position) < BLKSZ) {
-									return 0;
+					continue;
+				}
+
+				case RRPTR: {
+					for (j = 0; j < NODESZ; j++) {
+						if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
+							if ((fbDouble1 = getFreeBlock()) < 0) {
+								printk("write() Error : Could not find a free block to allocate\n");
+								return -1;
+							}
+							assignFreeBlockRRPTR1(index, j, fbDouble1);
+
+							for (k = 0; k < NODESZ; k++) {
+								if (((*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k]) == 0) {
+									if ((fbDouble2 = getFreeBlock()) < 0) {
+										printk("write() Error : Could not find a free block to allocate\n");
+										return -1;
+									}
+									assignFreeBlockRRPTR2(index, j, k, fbDouble2);
+
+									if ((newSize = size - position) > BLKSZ) {
+										newSize = BLKSZ;
+									}
+									data = data + newSize;
+									writeToRegDataRRPTR(index, j, k, data, newSize);
+									position += newSize; 
+									if ((remainingBytes -= position) < BLKSZ) { return 0; }
 								}
 							}
 						}
 					}
+					continue;
 				}
 			}
 		}
 	}
-	/* Error : Could not write the data */
-	printk("write() Error : Could not write the data");
+	printk("write() Error : Could not write the data into ramdisk\n");
 	return -1;
 }
 
-int writeFile(short iIndex, int filePos, unsigned char *data, int dataSize) {
+int writeFile(short index, int filePos, unsigned char *data, int dataSize) {
 	int position, ret, newSize;
 	unsigned char *newData;
-
-	// printk("Data in writeFile(): %s\n", data);
 
 	/* Initialize these values  */
 	position = 0;
 	newData = (unsigned char *) kmalloc(dataSize, GFP_KERNEL);
-
 	/* Copies the contents of the ib[iIndex] into data */
-	adjustPosition(iIndex, newData);
+	if ((ret = adjustPosition(index, newData)) < -1) {
+		printk("writeFile() Error : Could not get the contents of index node\n");
+		return -1;
+	} 
 	/* Compute the size of the data */
 	newSize = filePos + dataSize;
-
-	/* File position exceeds the maximum allowed size */
 	if (newSize > MAXFSZ) {
-		/* Write to temporary data container displaced by filePos whatever is possible */
+		/* Data size exceeds the maximum allowed size */
+		/* Write to temporary data container displaced by filePos whatever we can */
 		memcpy(newData + filePos, data, (MAXFSZ - filePos));
 		/* Perform the actual write into ramdisk */
-		if ((ret = write(iIndex, newData, MAXFSZ)) < 0) {
+		if ((ret = write(index, newData, MAXFSZ)) < 0) {
 			printk("writeFile() Error : Could not write file\n");
 			return -1;
 		}
 		/* Traverse through the parent directories and increase their size by the data size */
-		if ((ret = modifyParentInodePlus(iIndex, MAXFSZ)) < 0) {
+		if ((ret = modifyParentInodePlus(index, MAXFSZ)) < 0) {
 			printk(" writeFile() Error : Could not modify parent inode\n");
 			return -1;
 		}
 		/* Set the file position to the end */
-		fdTable[iIndex]->filePos = MAXFSZ;
+		fdTable[index]->filePos = MAXFSZ;
 		return (MAXFSZ - filePos);
-	}
-
-	/* Data fits into the data block */
-	else {
+	} else {
+		/* Data size fits into the block */
 		/* Write to data container displaced by filePos the data */
 		memcpy(newData + filePos, data, dataSize);
 		/* Perform the actual write into ramdisk */
-		if ((ret = write(iIndex, newData, newSize)) < 0) {
+		if ((ret = write(index, newData, newSize)) < 0) {
 			printk("writeFile() Error : Could not write file\n");
 			return -1;
 		}
 		/* Traverse through the parent directories and increase their size by the data size */
-		if ((ret = modifyParentInodePlus(iIndex, newSize)) < 0) {
+		if ((ret = modifyParentInodePlus(index, newSize)) < 0) {
 			printk(" writeFile() Error : Could not modify parent inode\n");
 			return -1;
 		}
 		/* Set the file position to the size of the data */
-		fdTable[iIndex]->filePos = newSize;
+		fdTable[index]->filePos = newSize;
 		return dataSize;
 	}
 	return -1;
 }
 
 int k_write(int fd, char* address, int numBytes) {
-	int dataSize, position;
-	int numBytesWritten, totalBytes;
-	unsigned char *data;
+	unsigned char *tempData;
+	int dataSize, position, numBytesWritten, totalBytes;
+
 	/* File descriptor refers to non-existent file */
 	if (fdTable[fd] == NULL) {
 		printk("k_write() Error : File does not exist or file descriptor is not valid\n");
 		return -1;
 	}
+
 	/* File descriptor refers to a directory file */
-	if (strncmp(ramdisk->ib[fd].type, "reg", 3) != 0) {
+	if (strncmp(ramdisk->ib[fd].type, "reg", 3)) {
 		printk("k_write() Error : File is not a regular file\n");
 		return -1;
 	}
 	/* Initialize these values */
+	tempData = (unsigned char *) kmalloc(DBLKSZ, GFP_KERNEL);
 	dataSize = 0; position = 0; totalBytes = 0;
-	data = (unsigned char *) kmalloc(DBLKSZ, GFP_KERNEL);
 	/* Write data until position reaches the size of the data */
 	while (position < numBytes) {
 		/* Compute the remaining data size to write */
@@ -253,25 +226,26 @@ int k_write(int fd, char* address, int numBytes) {
 			dataSize = DBLKSZ;
 		}
 		/* Write the data in address displaced by position into temporary data container */
-		memcpy(data, address + position, dataSize);
+		memcpy(tempData, address + position, dataSize);
 		/* Set and adjust the size of file into the file descriptor table */
-		if ((numBytesWritten = writeFile(fd, fdTable[fd]->filePos, data, dataSize)) < 0) {
+		if ((numBytesWritten = writeFile(fd, fdTable[fd]->filePos, tempData, dataSize)) < 0) {
 			printk("k_write() Error : Could not compute number of bytes written to file\n");
 			return -1;
 		}
-
-		// printk("numBytesWritten: %s\n", numBytesWritten);
 		/* Add the position by the data size written to data container */
 		position += dataSize;
 		/* Add the number of bytes written to address */
 		totalBytes += numBytesWritten;
 		/* Reset the temporary data container */
-		memset(data, 0, dataSize);
+		memset(tempData, 0, dataSize);
 	}
-	printk("Total Bytes Written: %d\n", totalBytes);
+	// printk("Total Bytes Written: %d\n", totalBytes);
 	return totalBytes;
 }
 
+EXPORT_SYMBOL(writeToRegDataDPTR);
+EXPORT_SYMBOL(writeToRegDataRPTR);
+EXPORT_SYMBOL(writeToRegDataRRPTR);
 EXPORT_SYMBOL(plusParentInodeSize);
 EXPORT_SYMBOL(modifyParentInodePlus);
 EXPORT_SYMBOL(write);

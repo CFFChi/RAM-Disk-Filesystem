@@ -25,24 +25,26 @@ int k_mkdir(char* pathname) {
 
 	dirName = (char *) kmalloc(14, GFP_KERNEL);
 
-	/* Retrieve the directory's parent directory  */
-	if ((ret = fileExists(pathname, dirName, &parentInode)) != 0) {
-		printk("k_creat() Error : File already exists or Error in fileExists()\n");
+	/* Check if the directory already exists and also grab parent directory index */
+	if ((ret = fileExists(pathname, dirName, &parentInode)) > 0) {
+		printk("k_creat() Error : File already exists\n");
+		return -1;
+	} else if (ret < 0) {
+		printk("k_creat() Error : Error inside fileExists()\n");
 		return -1;
 	}
 
+	/* File does not exist so create the directory */
 	printk("Creating directory : %s\n", dirName);
 
+	/* Find a free index node */
 	if ((freeInode = getFreeInode()) < 0) {
 		printk("k_creat() Error : Could not find free index node\n");
 		return -1;
+	} else {
+		/* Set the index node type and size */
+		setDirInode(freeInode, 0);
 	}
-
-	/* Create the directory at IB[freeNode] of size 0 */
-	setDirInode(freeInode, 0);
-
-	printk("parentINode : %d\n", parentInode);
-	printk("freeInode : %d\n", freeInode);
 
 	if ((ret = assignInode(parentInode, freeInode, dirName, 1)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");

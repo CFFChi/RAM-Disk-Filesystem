@@ -7,9 +7,9 @@ all:
 	insmod ramdisk_module.ko
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	rmmod ramdisk_module
 	rm ramdisk_test
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 
 pull:
 	scp mando@csa2.bu.edu:/home/ugrad/mando/CS552/ramdisk/* .
@@ -20,6 +20,7 @@ pull:
 update:
 	rmmod ramdisk_module
 	rm ramdisk_test
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	scp mando@csa2.bu.edu:/home/ugrad/mando/CS552/ramdisk/* .
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	gcc -g -o ramdisk_test ramdisk_test.c ramdisk_ioctl.c

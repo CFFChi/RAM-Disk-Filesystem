@@ -161,9 +161,10 @@ struct Ramdisk {
 
 /*
  * IOParam
- *        File descriptor, address, and number of bytes.
+ *		fd : File descriptor
+ *		address : Address of Data
+ *		numBytees : Size of file 
  */
-
 struct IOParameter {
 	int fd;
 	char *address;
@@ -183,22 +184,22 @@ int k_lseek(int fd, int offset);
 int k_readdir(int fd, char* address);
 
 /* Helper Functions */
-int isEmpty(union Block *location);
-void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) ;
-void setDirEntryLocation(short iIndex, int bIndex, int eIndex, char*filename, short newInode);
-void setSinglePtrLocation(short iIndex, int ptrIndex, short fIndex);
-void setDirEntrySinglePtrLocationEntry(short iIndex, int ptrIndex, int eIndex, char* filename, short newInode);
-void setDoublePtr1Location(short iIndex, int ptrIndex, short fIndex);
-void setDoublePtr2Location(short iIndex, int ptrIndex1, int ptrIndex2, short fIndex);
-void setDirEntryDoublePtrLocation(short iIndex, int ptrIndex1, int ptrIndex2, int eIndex, char* filename, short newInode);
+void setDirEntryFree(short fIndex, int eIndex, char* filename, short newInode);
+void setDirEntryAlloc(short fIndex, int lIndex, int eIndex, char* filename, short newInode);
+void setDirEntryRPTR(int index, int i, int j, char *filename, short newInode);
+void setDirEntryRRPTR(int index, int i, int j, int k, char *filename, short newInode);
+void assignFreeBlockDPTR(int index, int i, int fbIndex);
+void assignFreeBlockRPTR(int index, int pIndex, int fbIndex);
+void assignFreeBlockRRPTR1(int index, int pIndex, int fbIndex);
+void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex);
 void setRootInode(int iIndex, int size);
-int getInode(int index, char* pathname);
-int fileExists(char *pathname, char* lastPath, short* parentInode);
+int isEmpty(union Block *location);
 int getFreeInode(void);
 int getFreeBlock(void);
-int assignInode(short parentInode, short newInode, char *filename, int dirFlag);
-int searchParentInodes(short iIndex, short targetInode, int *size, short* parentInodes);
-int adjustPosition(short iIndex, unsigned char* data);
-
+int getInode(int index, char* targetFilename);
+int fileExists(char *pathName, char* lastPath, short* parentInode);
+int assignInode(short index, short newInode, char *filename, int dirFlag);
+int searchParentInodes(short index, short targetInode, int *pIndex, short* parentInodes);
+int adjustPosition(short index, unsigned char* data);
 
 

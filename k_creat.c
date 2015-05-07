@@ -31,14 +31,15 @@ int k_creat(char* pathname) {
 		printk("k_creat() Error : File already exists or Error in fileExists()\n");
 		return -1;
 	}
-
+	/* Find free index node */
 	if ((freeInode = getFreeInode()) < 0) {
 		printk("k_creat() Error : Could not find free index node\n");
 		return -1;
 	} else {
+		/* Set the type and size of the retrieved index node */
 		setRegInode(freeInode, 0);
 	}
-
+	/* Assign the file name to the index node */
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
 		return -1;

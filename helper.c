@@ -56,6 +56,12 @@ void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex) {
 	return;
 }
 
+void setRootInode(int iIndex, int size) {
+	char dir[4] = "dir";
+	memcpy(ramdisk->ib[iIndex].type, dir, 4);
+	ramdisk->ib[iIndex].size = size;
+	return;
+}
 
 int isEmpty(union Block *location) {
 	int i;
@@ -67,12 +73,6 @@ int isEmpty(union Block *location) {
 	return 1;
 }
 
-void setRootInode(int iIndex, int size) {
-	char dir[4] = "dir";
-	memcpy(ramdisk->ib[iIndex].type, dir, 4);
-	ramdisk->ib[iIndex].size = size;
-	return;
-}
 int getFreeInode(void) {
 	int i;
 	if (ramdisk->sb.numFreeInodes == 0) {
@@ -455,7 +455,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 int adjustPosition(short index, unsigned char* data) {
 	int i, j, k, possibleSize; 
 
-	possibleSize = 0; 
+	possibleSize = -1; 
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {
 			return possibleSize; 
@@ -470,7 +470,7 @@ int adjustPosition(short index, unsigned char* data) {
 			case DPTR6: 
 			case DPTR7: 
 			case DPTR8: {
-				data = data + possibleSize; 
+				data = data + possibleSize + 1; 
 				memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
 				possibleSize += BLKSZ;
 				continue;
@@ -481,7 +481,7 @@ int adjustPosition(short index, unsigned char* data) {
 					if ((*ramdisk->ib[8].location[i]).ptr.location[j] == 0) {
 						return possibleSize; 
 					}
-					data = data + possibleSize; 
+					data = data + possibleSize + 1; 
 					memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
 					possibleSize += BLKSZ;
 				}
@@ -498,7 +498,7 @@ int adjustPosition(short index, unsigned char* data) {
 						if ((*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k] == 0) {
 							return possibleSize; 
 						}
-						data = data + possibleSize; 
+						data = data + possibleSize + 1; 
 						memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
 						possibleSize += BLKSZ;
 					}

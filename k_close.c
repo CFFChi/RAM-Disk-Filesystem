@@ -13,11 +13,12 @@ extern struct FileDescriptor *fdTable[1024];
 
 int k_close(int index) {
 	if (fdTable[index] == NULL) {
+		printk("k_close() Error : You can close a non-existent file\n");
 		return -1;
-	} else {
-		fdTable[index] = NULL;
-		kfree(fdTable[index]);
-	}
+	} 
+
+	fdTable[index] = NULL;
+	kfree(fdTable[index]);
 	return 0;
 }
 

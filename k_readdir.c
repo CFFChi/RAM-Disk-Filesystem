@@ -11,33 +11,33 @@
 extern struct Ramdisk *ramdisk;
 extern struct FileDescriptor *fdTable[1024];
 
-/* http://stackoverflow.com/questions/26688413/how-to-extract-digits-from-a-number-in-c-begining-from-the-most-significant-dig */
 void addInodeStr(char* address){
 	short inode;
-	int tens, ones; 
-
+	unsigned char tens, ones; 
+	/* Shift bits to obtain the byte */
     inode = ((struct DirEntry *)address)->inode;
-    tens = inode / 10;
-    ones = inode % 10;
-
-    *((unsigned char *)address + 14) = (48 + tens);
-    *((unsigned char *)address + 15) = (48 + ones);
-
+    ones = inode;
+    tens = inode << 8;
+    /* Convert the character byte into ASCII */
+    *((unsigned char *)address + 14) = (unsigned char)(48 + tens);
+    *((unsigned char *)address + 15) = (unsigned char)(48 + ones);
 	return;
 }
 
-int readDirEntry(short iIndex, int filePos, struct DirEntry *dirEntry) {
+int readDirEntry(short index, int filePos, struct DirEntry *dirEntry) {
 	int possibleSize;
 	unsigned char *data; 
 	struct DirEntry *tempDirEntry; 
 
 	data = (unsigned char *) kmalloc(BLKSZ, GFP_KERNEL);
 
-	if ((possibleSize = adjustPosition(iIndex, data)) == 0) {
+	/* Get the maximum possible file size for this data at index */
+	if ((possibleSize = adjustPosition(index, data)) < 0) {
+		/* If it returns -1, that means the size is 0 */
 		return 0; 
 	} 
-
-	if (filePos >= possibleSize - 1) {
+	/* Check that the max possible file size is less than the current file position */
+	if (filePos >= possibleSize) {
 		printk("readDirEntry() Error : File position is greater than max possible size\n");
 		return -1; 
 	}
@@ -49,9 +49,8 @@ int readDirEntry(short iIndex, int filePos, struct DirEntry *dirEntry) {
 		if (tempDirEntry->inode == 0) {
 			filePos += NUMEPB;
 		} else {
-			// printk("tempDirEntry : %s\n", tempDirEntry);
 			memcpy(dirEntry, tempDirEntry, NUMEPB);
-			fdTable[iIndex]->filePos = filePos + NUMEPB;
+			fdTable[index]->filePos = filePos + NUMEPB;
 			kfree(data);
 			kfree(tempDirEntry);
 			return 1;
@@ -64,18 +63,21 @@ int k_readdir(int fd, char* address) {
 	int ret; 
 	struct DirEntry *dirEntry; 
 
-	dirEntry = (struct DirEntry *) kmalloc(16, GFP_KERNEL);
+	dirEntry = (struct DirEntry *) kmalloc(sizeof(struct DirEntry), GFP_KERNEL);
 
+	/* Check that the file is not open */
 	if (fdTable[fd] == NULL) {
 		printk("k_readdir() Error : File descriptor is not valid\n");
 		return -1;
 	}
 
+	/* Check that the file is a directory file */
 	if (strncmp(ramdisk->ib[fd].type, "dir", 3)) {
 		printk("k_readdir() Error : File at given address is not a directory file\n");
 		return -1; 
 	}
 
+	/* Read the filename from file descriptor and store direcotry into dirEntry */
 	if ((ret = readDirEntry(fd, fdTable[fd]->filePos, dirEntry)) < 0) {
 		printk("k_readdir() Error : Could not find read directory entry\n");
 		return -1;
@@ -83,10 +85,9 @@ int k_readdir(int fd, char* address) {
 		return 0;
 	}
 
+	/* String manipulation to return to the user */
 	memcpy(address, dirEntry, 16);
 	addInodeStr(address);
-
-	printk("Final Address: %s\n", address);
 	return 1;
 }
 

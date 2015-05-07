@@ -25,23 +25,18 @@ int k_open(char *pathname) {
 		printk("k_open() Error : File does not exist\n");
 		return -1;
 	}
-
 	/* Check for invalid file descriptor */
 	if (fdTable[index] != NULL) {
 		printk("k_open() Error : Other process is accessing this file descriptor\n");
 		return -1;
 	}
 
-
 	fd = (struct FileDescriptor *) kmalloc(sizeof(struct FileDescriptor), GFP_KERNEL);
 
-	/* Initialize file descriptor for this file */
+	/* Build the file descriptor for this file */
 	fd->filePos = 0;
 	fd->inodePtr = &ramdisk->ib[index];
 	fdTable[index] = fd;
-
-	// printk("filePos: %d\n ", fdTable[index]->filePos);
-	// printk("index in k_open: %d\n", index);
 
 	return index;
 }
