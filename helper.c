@@ -11,6 +11,51 @@
 extern struct Ramdisk *ramdisk;
 extern struct FileDescriptor *fdTable[1024];
 
+
+void setDirEntryFree(short fIndex, int eIndex, char* filename, short newInode) {
+	memcpy(ramdisk->fb[fIndex].dir.entry[eIndex].filename, filename, 14);
+	ramdisk->fb[fIndex].dir.entry[eIndex].inode = newInode;
+	return;
+}
+
+void setDirEntryAlloc(short iIndex, int lIndex, int eIndex, char* filename, short newInode) {
+	memcpy((*ramdisk->ib[iIndex].location[lIndex]).dir.entry[eIndex].filename, filename, 14);
+	(*ramdisk->ib[iIndex].location[lIndex]).dir.entry[eIndex].inode = newInode;
+	return;
+}
+
+void setDirEntryRPTR(int index, int i, int j, char *filename, short newInode) {
+	memcpy((*(*ramdisk->ib[index].location[8]).ptr.location[i]).dir.entry[j].filename, filename, 14);
+	(*(*ramdisk->ib[index].location[8]).ptr.location[i]).dir.entry[j].inode = newInode;
+	return;
+}
+
+void setDirEntryRRPTR(int index, int i, int j, int k, char *filename, short newInode) {
+	memcpy((*(*(*ramdisk->ib[index].location[9]).ptr.location[i]).ptr.location[j]).dir.entry[k].filename, filename, 14);
+	(*(*(*ramdisk->ib[index].location[9]).ptr.location[i]).ptr.location[j]).dir.entry[k].inode = newInode;
+	return;
+}
+
+void assignFreeBlockDPTR(int index, int i, int fbIndex) {
+	ramdisk->ib[index].location[i] = &ramdisk->fb[fbIndex];
+	return;
+}
+
+void assignFreeBlockRPTR(int index, int pIndex, int fbIndex) {
+	ramdisk->ib[index].location[8]->ptr.location[pIndex] = &ramdisk->fb[fbIndex];
+	return;
+}
+
+void assignFreeBlockRRPTR1(int index, int pIndex, int fbIndex) {
+	ramdisk->ib[index].location[9]->ptr.location[pIndex] = &ramdisk->fb[fbIndex];
+	return;
+}
+
+void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex) {
+	ramdisk->ib[index].location[9]->ptr.location[p1]->ptr.location[p2] = &ramdisk->fb[fbIndex];
+	return;
+}
+
 int isEmpty(union Block *location) {
 	int i;
 	for (i = 0; i < BLKSZ; i++) {
@@ -26,6 +71,42 @@ void setRootInode(int iIndex, int size) {
 	memcpy(ramdisk->ib[iIndex].type, dir, 4);
 	ramdisk->ib[iIndex].size = size;
 	return;
+}
+int getFreeInode(void) {
+	int i;
+	if (ramdisk->sb.numFreeInodes == 0) {
+		printk("getFreeInode() Error : There is no more free inode in ramdisk\n");
+		return -1;
+	} else {
+		for (i = 0; i < MAXFCT; i++) {
+			if (ramdisk->ib[i].type[0] == 0) {
+				ramdisk->sb.numFreeInodes--;
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+int getFreeBlock(void) {
+	int i;
+	unsigned char byte, offset;
+
+	if (ramdisk->sb.numFreeBlocks == 0) {
+		printk("getFreeBlock() Error : There is no more free block in ramdisk\n");
+		return -1;
+	}
+	for (i = 0; i < BTMPSZ; i++) {
+		byte = ramdisk->bb.byte[(i / 8)];
+		offset = 7 - (i % 8);
+		if (((byte >> offset) & 0x1) == 0) {
+			byte = (byte | (0x01 << offset));
+			ramdisk->bb.byte[(i / 8)] = byte;
+			ramdisk->sb.numFreeBlocks--;
+			return i;
+		}
+	}
+	return -1;
 }
 
 int getInode(int index, char* targetFilename) {
@@ -108,7 +189,6 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 		printk("fileExists() Error : Pathname requires the root character\n");
 		return -1;
 	}
-
 	if ((pathSize = strlen(pathName)) < 2) {
 		printk("fileExists() Error : Pathname requires a file name following the root character\n");
 		return -1;
@@ -119,7 +199,6 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 
 	while ((subpath = strchr(pathName, '/')) != NULL) {
 		pathSize = subpath - pathName; 
-
 		if (1 > pathSize || pathSize > 14) {
 			printk("fileExists() Error : Could not parse pathName / invalid input\n");
 			return -1;
@@ -140,14 +219,10 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 		printk("fileExists() Error : Last character of path name is /\n");
 		return -1;
 	}
-
 	if ((currentIndex = getInode(index, pathName)) < 0) {
 		printk("fileExists() Error : Could not get inode from pathname\n");
 		return -1;		
 	}
-
-	printk("CurrentIndex: %d\n", currentIndex);
-
 	strncpy(lastPath, pathName, pathSize);
 	*parentInode = index;
 
@@ -156,95 +231,6 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	} else {
 		return 0; 
 	}
-}
-
-int getFreeInode(void) {
-	int i;
-	/* Check free index node availability */
-	if (ramdisk->sb.numFreeInodes == 0) {
-		printk("getFreeInode() Error : There is no more free inode in ramdisk\n");
-		return -1;
-	}
-
-	/* Return index node  */
-	for (i = 0; i < MAXFCT; i++) {
-		// printk("IB[%d].type : %s\n", i, ramdisk->ib[i].type);
-		if (ramdisk->ib[i].type[0] == 0) {
-			ramdisk->sb.numFreeInodes--;
-			return i;
-		}
-	}
-	/* No Free Inode Found */
-	return -1;
-}
-
-int getFreeBlock(void) {
-	int i;
-	unsigned char byte;
-	unsigned char offset;
-
-	if (ramdisk->sb.numFreeBlocks == 0) {
-		printk("getFreeBlock() Error : There is no more free block in ramdisk\n");
-		return -1;
-	}
-
-	for (i = 0; i < FBARR; i++) {
-		byte = ramdisk->bb.byte[(i / 8)];
-		offset = 7 - (i % 8);
-
-		if (((byte >> offset) & 0x1) == 0) {
-			byte = (byte | SET_BIT_MASK1(i % 8));
-			ramdisk->bb.byte[(i / 8)] = byte;
-			ramdisk->sb.numFreeBlocks--;
-			return i;
-		}
-	}
-	return -1;
-}
-
-
-void setDirEntryFree(short fIndex, int eIndex, char* filename, short newInode) {
-	memcpy(ramdisk->fb[fIndex].dir.entry[eIndex].filename, filename, 14);
-	ramdisk->fb[fIndex].dir.entry[eIndex].inode = newInode;
-	return;
-}
-
-void setDirEntryAlloc(short iIndex, int lIndex, int eIndex, char* filename, short newInode) {
-	memcpy((*ramdisk->ib[iIndex].location[lIndex]).dir.entry[eIndex].filename, filename, 14);
-	(*ramdisk->ib[iIndex].location[lIndex]).dir.entry[eIndex].inode = newInode;
-	return;
-}
-
-void setDirEntryRPTR(int index, int i, int j, char *filename, short newInode) {
-	memcpy((*(*ramdisk->ib[index].location[8]).ptr.location[i]).dir.entry[j].filename, filename, 14);
-	(*(*ramdisk->ib[index].location[8]).ptr.location[i]).dir.entry[j].inode = newInode;
-	return;
-}
-
-void setDirEntryRRPTR(int index, int i, int j, int k, char *filename, short newInode) {
-	memcpy((*(*(*ramdisk->ib[index].location[9]).ptr.location[i]).ptr.location[j]).dir.entry[k].filename, filename, 14);
-	(*(*(*ramdisk->ib[index].location[9]).ptr.location[i]).ptr.location[j]).dir.entry[k].inode = newInode;
-	return;
-}
-
-void assignFreeBlockDPTR(int index, int i, int fbIndex) {
-	ramdisk->ib[index].location[i] = &ramdisk->fb[fbIndex];
-	return;
-}
-
-void assignFreeBlockRPTR(int index, int pIndex, int fbIndex) {
-	ramdisk->ib[index].location[8]->ptr.location[pIndex] = &ramdisk->fb[fbIndex];
-	return;
-}
-
-void assignFreeBlockRRPTR1(int index, int pIndex, int fbIndex) {
-	ramdisk->ib[index].location[9]->ptr.location[pIndex] = &ramdisk->fb[fbIndex];
-	return;
-}
-
-void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex) {
-	ramdisk->ib[index].location[9]->ptr.location[p1]->ptr.location[p2] = &ramdisk->fb[fbIndex];
-	return;
 }
 
 int assignInode(short index, short newInode, char *filename, int dirFlag) {
@@ -377,7 +363,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 	}
 	return -1;
 }
-
 
 int searchParentInodes(short index, short targetInode, int *pIndex, short* parentInodes) {
 	short entryInode;
@@ -524,10 +509,10 @@ EXPORT_SYMBOL(assignFreeBlockRRPTR1);
 EXPORT_SYMBOL(assignFreeBlockRRPTR2);
 EXPORT_SYMBOL(setDirEntryRPTR);
 EXPORT_SYMBOL(setRootInode);
-EXPORT_SYMBOL(getInode);
-EXPORT_SYMBOL(fileExists);
 EXPORT_SYMBOL(getFreeInode);
 EXPORT_SYMBOL(getFreeBlock);
+EXPORT_SYMBOL(getInode);
+EXPORT_SYMBOL(fileExists);
 EXPORT_SYMBOL(assignInode);
 EXPORT_SYMBOL(searchParentInodes);
 EXPORT_SYMBOL(adjustPosition);
