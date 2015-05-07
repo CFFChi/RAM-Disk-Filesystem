@@ -45,10 +45,7 @@ int removeDirEntry(short index, char* targetFilename) {
 			case DPTR6: 
 			case DPTR7: 
 			case DPTR8: { 
-				if (ramdisk->ib[index].location[i] == 0) {
-					continue;
-				}
-
+				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NUMEPB; j++) {
 					entry = ramdisk->ib[index].location[i]->dir.entry[j];
 					if (!strncmp(entry.filename, targetFilename, 14)) {
@@ -64,14 +61,10 @@ int removeDirEntry(short index, char* targetFilename) {
 			}
 
 			case RPTR: {
-				if (ramdisk->ib[index].location[i] == 0) {
-					continue;
-				}
+				if (ramdisk->ib[index].location[i] == 0) { continue; }
 
 				for (j = 0; j < NODESZ; j++) {
-					if (ramdisk->ib[index].location[i]->ptr.location[j] == 0) {
-						continue;
-					}
+					if (ramdisk->ib[index].location[i]->ptr.location[j] == 0) { continue; }
 					for (k = 0; k < NUMEPB; k++) {
 						entry = ramdisk->ib[index].location[8]->ptr.location[j]->dir.entry[k];
 						if (!strncmp(entry.filename, targetFilename, 14)) {
@@ -93,18 +86,12 @@ int removeDirEntry(short index, char* targetFilename) {
 			}
 
 			case RRPTR: {
-				if (ramdisk->ib[index].location[i] == 0) {
-					continue;
-				}
+				if (ramdisk->ib[index].location[i] == 0) { continue; }
 
 				for (j = 0; j < NODESZ; j++) {
-					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) {
-						continue;
-					}
+					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) { continue; }
 					for (k = 0; k < NODESZ; k++) {
-						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) {
-							continue;
-						}
+						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) { continue; }
 						for (l = 0; l < NUMEPB; l++) {
 							entry = ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]->dir.entry[l];
 							if (!strncmp(entry.filename, targetFilename, 14)) {
@@ -134,87 +121,66 @@ int removeDirEntry(short index, char* targetFilename) {
 }
 
 void cleanupRegLocation(union Block *location) {
-
-
 	unsigned int bIndex;
 	unsigned char byte, offset;
 
-	printk("inside cleanupRegLocation\n");
-
-	/* Set the block bytes to zero */
-	memset(location->reg.data, 0, BLKSZ);
 	/* Retrieve element index in free block */
 	bIndex = (location - ramdisk->fb) / BLKSZ;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
 	byte = ramdisk->bb.byte[bIndex / 8];
-	offset = SET_BIT_MASK0(bIndex % 8);
-	/* Clear bit */
-	ramdisk->bb.byte[bIndex / 8] = byte & offset;
+	offset = ~(0x01 << (7 - (bIndex % 8)));
+	/* Clear the bit */
+	ramdisk->bb.byte[bIndex / 8] = byte & offset; 
 	/* Increment number of free blocks available in Super Block */
-	// printk(" b avilability in cleanupRegLocation: %d\n", ramdisk->sb.numFreeInodes);
 	ramdisk->sb.numFreeBlocks++;
-	// printk(" a avilability in cleanupRegLocation: %d\n", ramdisk->sb.numFreeInodes);
+	/* Set the block bytes to zero */
+	memset(location->reg.data, 0, BLKSZ);
 	return;
 }
 
 int removeRegEntry(short index) {
-
-	struct Inode *inode = &(ramdisk->ib[index]);
-
 	int i, j, k;
-	union Block* location, *singlePtr, *doublePtr;
-
 
 	for (i = 0; i < NUMPTRS; i++) {
-
-		location = inode->location[i];
-
-		/* There is nothing inside this block so just return */
-		if (location == 0) {
-			memset(ramdisk->ib[index].type, 0, 4);
-			return 0;
-		}
-
-		// printk("in removeRegEntry\n");
-		// printk("here\n");
-			// printk("i: %d\n", i);
-
-		if (0 <= i && i <= 7) {
-			cleanupRegLocation(location);
-		} else {
-			if (i == 8) {
-				/*　Remove file blocks inside Single Redirection Block */
-				for (j = 0; j < NODESZ; j++) {
-						singlePtr = ((*inode->location[8]).ptr.location[j]);
-						if (singlePtr == 0) { break; }
-						cleanupRegLocation(singlePtr);
-				}
-				/* Remove Single Redirection Block */
-				cleanupRegLocation(location);
+		if (ramdisk->ib[index].location[i] == 0) { return 0; }
+		switch (i) {
+			case DPTR1: 
+			case DPTR2: 
+			case DPTR3: 
+			case DPTR4: 
+			case DPTR5: 
+			case DPTR6: 
+			case DPTR7: 
+			case DPTR8: {
+				cleanupRegLocation(ramdisk->ib[index].location[i]);
+				continue;
 			}
 
-			if (i == 9) {
-				/* Depth One of Double Redirection Block */
+			case RPTR: {
 				for (j = 0; j < NODESZ; j++) {
-					singlePtr = ((*inode->location[9]).ptr.location[j]);
-					if (singlePtr == 0) { break; }
-					/* Remove all files in Second pointer of Double Redirection Blocks */
-					for (k = 0; k < NODESZ; k++) {
-						doublePtr = ((*(*inode->location[9]).ptr.location[j]).ptr.location[k]);
-						if (doublePtr == 0) { break; }
-						cleanupRegLocation(doublePtr);
-					}
-					/* Remove all files in first pointer of Double REdirection Blocks */
-					cleanupRegLocation(singlePtr);
+					if (ramdisk->ib[index].location[8]->ptr.location[j] == 0) { break; }
+					cleanupRegLocation(ramdisk->ib[index].location[8]->ptr.location[j]);
 				}
-				/* Remove Double Redirection Blocks */
-				cleanupRegLocation(location);
+				cleanupRegLocation(ramdisk->ib[index].location[8]);
+				continue;
+			}
+
+			case RRPTR: {
+				for (j = 0; j < NODESZ; j++) {
+					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) { break; }
+
+					for (k = 0; k < NUMEPB; k++) {
+						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) { break; }
+						cleanupRegLocation(ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]);
+					}
+					cleanupRegLocation(ramdisk->ib[index].location[9]->ptr.location[j]);
+				}
+				cleanupRegLocation(ramdisk->ib[index].location[9]);
+				continue;
 			}
 		}
 	}
-
-	/* Set the memory of index node to zero */
-	memset(inode, 0, sizeof(struct Inode));
+	memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
 	return 0;
 }
 
@@ -236,6 +202,7 @@ int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int 
 			strncpy(tempPath, pathName, pathSize);
 			tempPath[pathSize] = '\0';
 			pathName = subPath + 1;
+
 			if ((index = getInode(index, tempPath)) < 0) {
 				printk("minusParentInodeSize() Error: Could not get inode from pathName\n");
 				return -1;

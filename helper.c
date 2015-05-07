@@ -56,6 +56,7 @@ void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex) {
 	return;
 }
 
+
 int isEmpty(union Block *location) {
 	int i;
 	for (i = 0; i < BLKSZ; i++) {
@@ -233,7 +234,7 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 
 int assignInode(short index, short newInode, char *filename, int dirFlag) {
 	int i, j, k, l;
-	int fbDirect, fbSingle, fbDouble1, fbDouble2;
+	int fbDirect, fbSingle, fbDouble1, fbDouble2, fbDouble3;
 	short inode; 
 
 	for (i = 0; i < NUMPTRS; i++) {
@@ -345,11 +346,23 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 							setDirEntryRRPTR(index, j, 0, 0, filename, newInode);
 							return 0;
 						} else {
-							for (l = 0; l < NUMEPB; l++) {
-								inode = (*(*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k]).dir.entry[l].inode;
-								if (inode == 0) {
-									setDirEntryRRPTR(index, j, k, l, filename, newInode);
+							for (k = 0; k < NODESZ; k++) {
+								if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) {
+									if ((fbDouble3 = getFreeInode()) < 0) {
+										printk("assignInode() Error : Could not find free block in ramdisk\n");
+										return -1;
+									} 
+									assignFreeBlockRRPTR2(index, j, k, fbDouble3);
+									setDirEntryRRPTR(index, j, k, 0, filename, newInode);
 									return 0;
+								} else {
+									for (l = 0; l < NUMEPB; l++) {
+										inode = (*(*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k]).dir.entry[l].inode;
+										if (inode == 0) {
+											setDirEntryRRPTR(index, j, k, l, filename, newInode);
+											return 0;
+										}
+									}
 								}
 							}
 						}
