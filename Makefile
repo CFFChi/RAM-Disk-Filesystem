@@ -7,8 +7,8 @@ all:
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rmmod ramdisk
 	rm ramdisk_test
+	rmmod ramdisk
 
 update:
 	scp * ampy@csa2.bu.edu:cs552/discos
