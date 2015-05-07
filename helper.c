@@ -21,7 +21,6 @@ int isEmpty(union Block *location) {
 	return 1;
 }
 
-
 void setRootInode(int iIndex, int size) {
 	char dir[4] = "dir";
 	memcpy(ramdisk->ib[iIndex].type, dir, 4);
@@ -58,8 +57,8 @@ int getInode(int index, char* targetFilename) {
 						}
 					}
 				}
+				continue;
 			}
-			continue;
 
 			case RPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
@@ -74,8 +73,8 @@ int getInode(int index, char* targetFilename) {
 						}
 					}
 				}
+				continue;
 			}
-			continue;
 
 			case RRPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
@@ -93,70 +92,69 @@ int getInode(int index, char* targetFilename) {
 						} 
 					}
 				}
+				continue;
 			}
-			continue;
 		}
 	}
 	return 0;
 }
 
-int fileExists(char *pathname, char* lastPath, short* parentInode) {
-	unsigned int size;
-	char *path, *subpath;
+int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	int index, currentIndex;
+	unsigned int pathSize;
+	char* tempPath, *subpath;
 
-	size = strlen(pathname);
-
-	if (pathname[0] != '/' || size < 2) {
-		printk("fileExist() Error: Invalid pathname\n");
+	if (pathName[0] != '/') {
+		printk("fileExists() Error : Pathname requires the root character\n");
 		return -1;
 	}
 
-	index = 0;
-	currentIndex = 0;
-	path = (char *) kmalloc(14, GFP_KERNEL);
-	pathname++;
+	if ((pathSize = strlen(pathName)) < 2) {
+		printk("fileExists() Error : Pathname requires a file name following the root character\n");
+		return -1;
+	}
 
-	// printk("parentInode before: %d\n", *parentInode);
+	index = 0; currentIndex = 0; pathName++;
+	tempPath = (char *) kmalloc(14, GFP_KERNEL);
 
+	while ((subpath = strchr(pathName, '/')) != NULL) {
+		pathSize = subpath - pathName; 
 
-	while ((subpath = strchr(pathname, '/')) != NULL) {
-		size = subpath - pathname;
-
-		if (1 > size || size > 14) {
-			printk("fileExists() Error : Could not parse pathname / invalid input\n");
+		if (1 > pathSize || pathSize > 14) {
+			printk("fileExists() Error : Could not parse pathName / invalid input\n");
 			return -1;
 		} else {
-			strncpy(path, pathname, size);
-			path[size] = '\0';
-			pathname = subpath + 1;
-			if ((index = getInode(index, path)) < 0) {
-				printk("fileExist() Error : Could not get index node from pathname\n");
+			printk("PathName in While: %s\n", pathName);
+			strncpy(tempPath, pathName, pathSize);
+			tempPath[pathSize] = '\0';
+			pathName = subpath + 1;
+			printk("tempPath: %s\n", tempPath);
+			if ((index = getInode(index, tempPath)) < 0) {
+				printk("fileExists() Error : Could not get index from file name: %s\n", tempPath);
 				return -1;
 			}
 		}
 	}
 
-	if (*pathname == '\0') {
-		printk("fileExists() Error : Last character of path is /\n");
+	if (pathName[0] == '\0') {
+		printk("fileExists() Error : Last character of path name is /\n");
 		return -1;
+	}
+
+	if ((currentIndex = getInode(index, pathName)) < 0) {
+		printk("fileExists() Error : Could not get inode from pathname\n");
+		return -1;		
+	}
+
+	printk("CurrentIndex: %d\n", currentIndex);
+
+	strncpy(lastPath, pathName, pathSize);
+	*parentInode = index;
+
+	if (currentIndex > 0) {
+		return currentIndex;
 	} else {
-		strncpy(path, pathname, size);
-		printk("pathname: %s\n", path);
-		if ((currentIndex = getInode(index, path)) < 0) {
-			printk("fileExists() Error : Could not get inode from pathname\n");
-			return -1;
-		}
-		strncpy(lastPath, path, size);
-		*parentInode = index;
-		printk("parentInode after: %d\n", *parentInode);
-		if (currentIndex > 0) {
-			// printk("currentIndex : %d\n", currentIndex);
-			return currentIndex;
-		}
-		/* File does not exist on system */
-		printk("File %s is not found\n", path);
-		return 0;
+		return 0; 
 	}
 }
 
