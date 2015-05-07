@@ -260,7 +260,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 				printk("assignInode() Error : Could not find free block in ramdisk\n");
 				return -1;
 			}
-
 			assignFreeBlockDPTR(index, i, fbDirect);
 
 			switch (i) {
@@ -282,7 +281,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 						printk("assignInode() Error : Could not find free block in ramdisk\n");
 						return -1;
 					}
-
 					assignFreeBlockRPTR(index, 0, fbSingle);
 					setDirEntryFree(fbSingle, 0, filename, newInode);
 					return 0;
@@ -294,14 +292,12 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 						printk("assignInode() Error : Could not find free block in ramdisk\n");
 						return -1;
 					}
-
 					assignFreeBlockRRPTR1(index, 0, fbDouble1);
 
 					if ((fbDouble2 = getFreeBlock()) < 0) {
 						printk("assignInode() Error : Could not find free block in ramdisk\n");
 						return -1;
 					}
-
 					assignFreeBlockRRPTR2(index, 0, 0, fbDouble2);
 					setDirEntryFree(fbDouble2, 0, filename, newInode);
 					return 0;
@@ -334,7 +330,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 								printk("assignInode() Error : Could not find free block in ramdisk\n");
 								return -1;
 							}	
-
 							assignFreeBlockRPTR(index, j, fbSingle);
 							setDirEntryFree(fbSingle, 0, filename, newInode);
 							return 0;
@@ -358,14 +353,12 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 								printk("assignInode() Error : Could not find free block in ramdisk\n");
 								return -1;
 							}
-
 							assignFreeBlockRRPTR1(index, j, fbDouble1);
 
 							if ((fbDouble2 = getFreeBlock()) < 0) {
 								printk("assignInode() Error : Could not find free block in ramdisk\n");
 								return -1;
 							}
-
 							assignFreeBlockRRPTR2(index, j, 0, fbDouble2);
 							setDirEntryRRPTR(index, j, 0, 0, filename, newInode);
 							return 0;
@@ -465,49 +458,63 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 	return 0; 
 }
 
-int adjustPosition(short iIndex, unsigned char* data) {
-	int i, j, k, size;
-	union Block *location, *singlePtr, *doublePtr1, *doublePtr2;
+int adjustPosition(short index, unsigned char* data) {
 
-	size = 0;
+	int i, j, k, possibleSize; 
+
+	possibleSize = 0; 
 	for (i = 0; i < NUMPTRS; i++) {
-		location = ramdisk->ib[iIndex].location[i];
-		if (location == 0) { return size; }
+		if (ramdisk->ib[index].location[i] == 0) {
+			return possibleSize; 
+		}
 
-		if (0 <= i && i <= 7) {
-			data = data + size;
-			memcpy(data, location, BLKSZ);
-			size += BLKSZ;
+		switch (i) {
+			case DPTR1: 
+			case DPTR2: 
+			case DPTR3: 
+			case DPTR4: 
+			case DPTR5: 
+			case DPTR6: 
+			case DPTR7: 
+			case DPTR8: {
+				data = data + possibleSize; 
+				memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+				possibleSize += BLKSZ;
+				continue;
+			}
 
-		} else {
-			for (j = 0; j < NODESZ; j++) {
-				/* Single Redirection*/
-				if (i == 8) {
-					singlePtr = (*ramdisk->ib[8].location[i]).ptr.location[j];
-					if (singlePtr == 0) { return size; }
-					data = data + size;
-					memcpy(data, singlePtr, BLKSZ);
-					size += BLKSZ;
+			case RPTR: {
+				for (j = 0; j < NODESZ; j++) {
+					if ((*ramdisk->ib[8].location[i]).ptr.location[j] == 0) {
+						return possibleSize; 
+					}
+					data = data + possibleSize; 
+					memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+					possibleSize += BLKSZ;
 				}
+				continue;
+			}
 
-				/* Double Redirection */
-				else {
-					doublePtr1 = (*ramdisk->ib[9].location[i]).ptr.location[j];
-					if (doublePtr1 == 0) { return size; }
+			case RRPTR: {
+				for (j = 0; j < NODESZ; j++) {
+					if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
+						return possibleSize;
+					}
 
 					for (k = 0; k < NODESZ; k++) {
-						doublePtr2 = (*(*ramdisk->ib[9].location[i]).ptr.location[j]).ptr.location[k];
-						if (doublePtr2 == 0) { return size; }
-
-						data = data + size;
-						memcpy(data, doublePtr2, BLKSZ);
-						size += BLKSZ;
+						if ((*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k] == 0) {
+							return possibleSize; 
+						}
+						data = data + possibleSize; 
+						memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+						possibleSize += BLKSZ;
 					}
 				}
+				continue;
 			}
 		}
 	}
-	return size;
+	return possibleSize;
 }
 
 EXPORT_SYMBOL(isEmpty);
