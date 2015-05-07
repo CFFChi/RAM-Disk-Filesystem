@@ -1,14 +1,14 @@
- /*
-   -- template test file for RAMDISK Filesystem Assignment.
-   -- include a case for:
-   -- two processes
-   -- largest number of files (should be 1024 max)
-   -- largest single file (start with direct blocks [2048 bytes max],
-   then single-indirect [18432 bytes max] and finally double
-   indirect [1067008 bytes max])
-   -- creating and unlinking files to avoid memory leaks
-   -- each file operation
-   -- error checking on invalid inputs
+/*
+  -- template test file for RAMDISK Filesystem Assignment.
+  -- include a case for:
+  -- two processes
+  -- largest number of files (should be 1024 max)
+  -- largest single file (start with direct blocks [2048 bytes max],
+  then single-indirect [18432 bytes max] and finally double
+  indirect [1067008 bytes max])
+  -- creating and unlinking files to avoid memory leaks
+  -- each file operation
+  -- error checking on invalid inputs
 */
 
 #include <stdio.h>
@@ -19,16 +19,23 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include "ramdisk.h"
-
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
+<<<<<<< HEAD
 // #define TEST1
 // #define TEST2
 // #define TEST3
 // #define TEST4
 #define TEST5
+=======
+#define TEST1
+#define TEST2
+#define TEST3
+#define TEST4
+#define TEST5
+
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
 #define USE_RAMDISK
 
@@ -56,8 +63,13 @@
 
 int my_readdir(int fd, char* str)
 {
+<<<<<<< HEAD
   strcpy(str, "blah");
   return 1;
+=======
+ strcpy(str, "blah");
+ return 1;
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 }
 
 #endif
@@ -66,8 +78,9 @@ int my_readdir(int fd, char* str)
 // #define's to control whether single indirect or
 // double indirect block pointers are tested
 
-// #define TEST_SINGLE_INDIRECT
-// #define TEST_DOUBLE_INDIRECT
+#define TEST_SINGLE_INDIRECT
+#define TEST_DOUBLE_INDIRECT
+
 
 #define MAX_FILES 1023
 #define BLK_SZ 256		/* Block size */
@@ -84,114 +97,155 @@ static char addr[PTRS_PB*PTRS_PB*BLK_SZ+1]; /* Scratchpad memory */
 
 int main () {
 
-  int retval, i;
-  int fd;
-  int index_node_number;
+ int retval, i;
+ int fd;
+ int index_node_number;
 
-  /* Some arbitrary data for our files */
-  memset (data1, '1', sizeof (data1));
-  memset (data2, '2', sizeof (data1));
-  memset (data3, '3', sizeof (data1));
+ /* Some arbitrary data for our files */
+ memset (data1, '1', sizeof (data1));
+ memset (data2, '2', sizeof (data1));
+ memset (data3, '3', sizeof (data1));
 
 
 #ifdef TEST1
 
-  /* ****TEST 1: MAXIMUM file creation**** */
+ /* ****TEST 1: MAXIMUM file creation**** */
 
-  /* Generate MAXIMUM regular files */
-  for (i = 0; i < MAX_FILES + 1; i++) { // go beyond the limit
-    sprintf (pathname, "/file%d", i);
-
+<<<<<<< HEAD
     retval = CREAT (pathname);
+=======
+ /* Generate MAXIMUM regular files */
+ for (i = 0; i < MAX_FILES + 1; i++) { // go beyond the limit
+   sprintf (pathname, "/file%d", i);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-    if (retval < 0) {
-      fprintf (stderr, "creat: File creation error! status: %d\n",
-	       retval);
+   retval = CREAT (pathname);
 
+<<<<<<< HEAD
       if (i != MAX_FILES)
 	exit(EXIT_FAILURE);
     }
+=======
+   if (retval < 0) {
+     fprintf (stderr, "creat: File creation error! status: %d\n",
+        retval);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-    memset (pathname, 0, 80);
-  }
+     if (i != MAX_FILES)
+ exit(EXIT_FAILURE);
+   }
 
-  /* Delete all the files created */
-  for (i = 0; i < MAX_FILES; i++) {
-    sprintf (pathname, "/file%d", i);
+   memset (pathname, 0, 80);
+ }
 
+<<<<<<< HEAD
     retval = UNLINK (pathname);
+=======
+ /* Delete all the files created */
+ for (i = 0; i < MAX_FILES; i++) {
+   sprintf (pathname, "/file%d", i);
 
-    if (retval < 0) {
-      fprintf (stderr, "unlink: File deletion error! status: %d\n",
-	       retval);
+   retval = UNLINK (pathname);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-      exit(EXIT_FAILURE);
-    }
+   if (retval < 0) {
+     fprintf (stderr, "unlink: File deletion error! status: %d\n",
+        retval);
 
-    memset (pathname, 0, 80);
-  }
+     exit(EXIT_FAILURE);
+   }
+
+   memset (pathname, 0, 80);
+ }
 
 #endif // TEST1
 
 #ifdef TEST2
 
+<<<<<<< HEAD
   /* ****TEST 2: LARGEST file size**** */
 
 
   /* Generate one LARGEST file */
   retval = CREAT ("/bigfile");
+=======
+ /* ****TEST 2: LARGEST file size**** */
 
-  if (retval < 0) {
-    fprintf (stderr, "creat: File creation error! status: %d\n",
-	     retval);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-    exit(EXIT_FAILURE);
-  }
+ /* Generate one LARGEST file */
+ retval = CREAT ("/bigfile");
 
-  retval =  OPEN ("/bigfile"); /* Open file to write to it */
+ if (retval < 0) {
+   fprintf (stderr, "creat: File creation error! status: %d\n",
+      retval);
 
-  if (retval < 0) {
-    fprintf (stderr, "open: File open error! status: %d\n",
-	     retval);
+   exit(EXIT_FAILURE);
+ }
 
-    exit(EXIT_FAILURE);
-  }
+ retval =  OPEN ("/bigfile"); /* Open file to write to it */
 
-  fd = retval;			/* Assign valid fd */
+ if (retval < 0) {
+   fprintf (stderr, "open: File open error! status: %d\n",
+      retval);
 
+   exit(EXIT_FAILURE);
+ }
+
+<<<<<<< HEAD
   /* Try writing to all direct data blocks */
   retval = WRITE (fd, data1, sizeof(data1));
 
   if (retval < 0) {
     fprintf (stderr, "write: File write STAGE1 error! status: %d\n",
 	     retval);
+=======
+ fd = retval;			/* Assign valid fd */
 
-    exit(EXIT_FAILURE);
-  }
+ /* Try writing to all direct data blocks */
+ retval = WRITE (fd, data1, sizeof(data1));
+
+ if (retval < 0) {
+   fprintf (stderr, "write: File write STAGE1 error! status: %d\n",
+      retval);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
+
+   exit(EXIT_FAILURE);
+ }
 
 #ifdef TEST_SINGLE_INDIRECT
 
+<<<<<<< HEAD
   /* Try writing to all single-indirect data blocks */
   retval = WRITE (fd, data2, sizeof(data2));
+=======
+ /* Try writing to all single-indirect data blocks */
+ retval = WRITE (fd, data2, sizeof(data2));
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-  if (retval < 0) {
-    fprintf (stderr, "write: File write STAGE2 error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "write: File write STAGE2 error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
 #ifdef TEST_DOUBLE_INDIRECT
 
+<<<<<<< HEAD
   /* Try writing to all double-indirect data blocks */
   retval = WRITE (fd, data3, sizeof(data3));
+=======
+ /* Try writing to all double-indirect data blocks */
+ retval = WRITE (fd, data3, sizeof(data3));
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-  if (retval < 0) {
-    fprintf (stderr, "write: File write STAGE3 error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "write: File write STAGE3 error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
 #endif // TEST_DOUBLE_INDIRECT
 
@@ -201,188 +255,215 @@ int main () {
 
 #ifdef TEST3
 
-  /* ****TEST 3: Seek and Read file test**** */
-  retval = LSEEK (fd, 0);	/* Go back to the beginning of your file */
+ /* ****TEST 3: Seek and Read file test**** */
+ retval = LSEEK (fd, 0);	/* Go back to the beginning of your file */
 
+<<<<<<< HEAD
   if (retval < 0) {
     fprintf (stderr, "lseek: File seek error! status: %d\n",
 	     retval);
+=======
+ if (retval < 0) {
+   fprintf (stderr, "lseek: File seek error! status: %d\n",
+      retval);
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
+<<<<<<< HEAD
   /* Try reading from all direct data blocks */
   retval = READ (fd, addr, sizeof(data1));
+=======
+ /* Try reading from all direct data blocks */
+ retval = READ (fd, addr, sizeof(data1));
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-  if (retval < 0) {
-    fprintf (stderr, "read: File read STAGE1 error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "read: File read STAGE1 error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
-  /* Should be all 1s here... */
-  printf ("Data at addr: %s\n", addr);
+   exit(EXIT_FAILURE);
+ }
+ /* Should be all 1s here... */
+ printf ("Data at addr: %s\n", addr);
 
 #ifdef TEST_SINGLE_INDIRECT
 
-  /* Try reading from all single-indirect data blocks */
-  retval = READ (fd, addr, sizeof(data2));
+ /* Try reading from all single-indirect data blocks */
+ retval = READ (fd, addr, sizeof(data2));
 
-  if (retval < 0) {
-    fprintf (stderr, "read: File read STAGE2 error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "read: File read STAGE2 error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
-  /* Should be all 2s here... */
-  printf ("Data at addr: %s\n", addr);
+   exit(EXIT_FAILURE);
+ }
+ /* Should be all 2s here... */
+ printf ("Data at addr: %s\n", addr);
 
 #ifdef TEST_DOUBLE_INDIRECT
 
+<<<<<<< HEAD
   /* Try reading from all double-indirect data blocks */
   retval = READ (fd, addr, sizeof(data3));
+=======
+ /* Try reading from all double-indirect data blocks */
+ retval = READ (fd, addr, sizeof(data3));
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-  if (retval < 0) {
-    fprintf (stderr, "read: File read STAGE3 error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "read: File read STAGE3 error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
-  /* Should be all 3s here... */
-  printf ("Data at addr: %s\n", addr);
+   exit(EXIT_FAILURE);
+ }
+ /* Should be all 3s here... */
+ printf ("Data at addr: %s\n", addr);
 
 #endif // TEST_DOUBLE_INDIRECT
 
 #endif // TEST_SINGLE_INDIRECT
 
-  /* Close the bigfile */
-  retval = CLOSE(fd);
+ /* Close the bigfile */
+ retval = CLOSE(fd);
 
-  if (retval < 0) {
-    fprintf (stderr, "close: File close error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "close: File close error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
+ /* Remove the biggest file */
+
+<<<<<<< HEAD
   /* Remove the biggest file */
 
   retval = UNLINK ("/bigfile");
+=======
+ retval = UNLINK ("/bigfile");
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
 
-  if (retval < 0) {
-    fprintf (stderr, "unlink: /bigfile file deletion error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "unlink: /bigfile file deletion error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
 #endif // TEST3
 
 #ifdef TEST4
 
-  /* ****TEST 4: Make directory and read directory entries**** */
-  retval = MKDIR ("/dir1");
+ /* ****TEST 4: Make directory and read directory entries**** */
+ retval = MKDIR ("/dir1");
 
-  if (retval < 0) {
-    fprintf (stderr, "mkdir: Directory 1 creation error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "mkdir: Directory 1 creation error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
-  retval = MKDIR ("/dir1/dir2");
+ retval = MKDIR ("/dir1/dir2");
 
-  if (retval < 0) {
-    fprintf (stderr, "mkdir: Directory 2 creation error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "mkdir: Directory 2 creation error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
-  retval = MKDIR ("/dir1/dir3");
+ retval = MKDIR ("/dir1/dir3");
 
-  if (retval < 0) {
-    fprintf (stderr, "mkdir: Directory 3 creation error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "mkdir: Directory 3 creation error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
-  retval =  OPEN ("/dir1"); /* Open directory file to read its entries */
+ retval =  OPEN ("/dir1"); /* Open directory file to read its entries */
 
-  if (retval < 0) {
-    fprintf (stderr, "open: Directory open error! status: %d\n",
-	     retval);
+ if (retval < 0) {
+   fprintf (stderr, "open: Directory open error! status: %d\n",
+      retval);
 
-    exit(EXIT_FAILURE);
-  }
+   exit(EXIT_FAILURE);
+ }
 
-  fd = retval;			/* Assign valid fd */
+ fd = retval;			/* Assign valid fd */
 
-  memset (addr, 0, sizeof(addr)); /* Clear scratchpad memory */
+ memset (addr, 0, sizeof(addr)); /* Clear scratchpad memory */
 
-  while ((retval = READDIR (fd, addr))) { /* 0 indicates end-of-file */
+ while ((retval = READDIR (fd, addr))) { /* 0 indicates end-of-file */
 
-    if (retval < 0) {
-      fprintf (stderr, "readdir: Directory read error! status: %d\n",
-	       retval);
-      exit(EXIT_FAILURE);
-    }
+   if (retval < 0) {
+     fprintf (stderr, "readdir: Directory read error! status: %d\n",
+        retval);
+     exit(EXIT_FAILURE);
+   }
 
-    index_node_number = atoi(&addr[14]);
-    printf ("Contents at addr: [%s,%d]\n", addr, index_node_number);
-  }
+   index_node_number = atoi(&addr[14]);
+   printf ("Contents at addr: [%s,%d]\n", addr, index_node_number);
+ }
 
 #endif // TEST4
 
 #ifdef TEST5
 
-  /* ****TEST 5: 2 process test**** */
+ /* ****TEST 5: 2 process test**** */
 
-  if((retval = fork())) {
+ if((retval = fork())) {
 
-    if(retval == -1) {
-      fprintf(stderr, "Failed to fork\n");
-      exit(EXIT_FAILURE);
-    }
+   if(retval == -1) {
+     fprintf(stderr, "Failed to fork\n");
+     exit(EXIT_FAILURE);
+   }
 
-    /* Generate 300 regular files */
-    for (i = 0; i < 300; i++) {
-      sprintf (pathname, "/file_p_%d", i);
+   /* Generate 300 regular files */
+   for (i = 0; i < 300; i++) {
+     sprintf (pathname, "/file_p_%d", i);
 
-      retval = CREAT (pathname);
+     retval = CREAT (pathname);
 
-      if (retval < 0) {
-	fprintf (stderr, "(Parent) create: File creation error! status: %d\n",
-		 retval);
-	exit(EXIT_FAILURE);
-      }
+     if (retval < 0) {
+ fprintf (stderr, "(Parent) create: File creation error! status: %d\n",
+    retval);
+ exit(EXIT_FAILURE);
+     }
 
-      memset (pathname, 0, 80);
-    }
+     memset (pathname, 0, 80);
+   }
 
-  }
-  else {
-    /* Generate 300 regular files */
-    for (i = 0; i < 300; i++) {
-      sprintf (pathname, "/file_c_%d", i);
+ }
+ else {
+   /* Generate 300 regular files */
+   for (i = 0; i < 300; i++) {
+     sprintf (pathname, "/file_c_%d", i);
 
-      retval = CREAT (pathname);
+     retval = CREAT (pathname);
 
-      if (retval < 0) {
-	fprintf (stderr, "(Child) create: File creation error! status: %d\n",
-		 retval);
+     if (retval < 0) {
+ fprintf (stderr, "(Child) create: File creation error! status: %d\n",
+    retval);
 
-	exit(EXIT_FAILURE);
-      }
+ exit(EXIT_FAILURE);
+     }
 
-      memset (pathname, 0, 80);
-    }
-  }
+     memset (pathname, 0, 80);
+   }
+ }
 
 #endif // TEST5
 
-  printf("Congratulations, you have passed all tests!!\n");
+ printf("Congratulations, you have passed all tests!!\n");
 
+<<<<<<< HEAD
   return 0;
 }
+=======
+ return 0;
+}
+>>>>>>> d6ddf77b0dc3106f76f315373eecf363c72c01fd
