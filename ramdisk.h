@@ -18,7 +18,14 @@
 #define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  // Max file size
 #define MAXFCT	1024 														 // Max file count
 
-#define DPTR  0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+#define DPTR1 0
+#define DPTR2 1
+#define DPTR3 2
+#define DPTR4 3
+#define DPTR5 4
+#define DPTR6 5 
+#define DPTR7 6
+#define DPTR8 7
 #define RPTR  8
 #define RRPTR 9
 
@@ -179,6 +186,7 @@ int k_readdir(int fd, char* address);
 /* Helper Functions */
 int isEmpty(union Block *location);
 void setDirEntry(short fIndex, int eIndex, char* filename, short newInode) ;
+void setDirEntryLocation(short iIndex, int bIndex, int eIndex, char*filename, short newInode);
 void setSinglePtrLocation(short iIndex, int ptrIndex, short fIndex);
 void setDirEntrySinglePtrLocationEntry(short iIndex, int ptrIndex, int eIndex, char* filename, short newInode);
 void setDoublePtr1Location(short iIndex, int ptrIndex, short fIndex);

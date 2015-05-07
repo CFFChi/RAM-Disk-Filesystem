@@ -24,7 +24,6 @@ int k_creat(char* pathname) {
 	char* fileName;
 
 	parentInode = 0;
-
 	fileName = (char *) kmalloc(14, GFP_KERNEL);
 
 	/* Retrieve last directory entry in pathname and store in parentInode */
@@ -33,16 +32,12 @@ int k_creat(char* pathname) {
 		return -1;
 	}
 
-	printk("Creating %s...\n", fileName);
-
 	if ((freeInode = getFreeInode()) < 0) {
 		printk("k_creat() Error : Could not find free index node\n");
 		return -1;
 	}
 
-	printk("here1\n");
 	setRegInode(freeInode, 0);
-	printk("here2\n");
 
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");

@@ -11,14 +11,14 @@
 MODULE_LICENSE("GPL");
 
 struct Ramdisk *ramdisk;
-EXPORT_SYMBOL(ramdisk);
 struct FileDescriptor *fdTable[1024];
+
+EXPORT_SYMBOL(ramdisk);
 EXPORT_SYMBOL(fdTable);
 
 static struct file_operations proc_operations;
 static struct proc_dir_entry *proc_entry;
 static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
-
 
 void cleanInfo(struct IoctlInfo *info) {
 	/* Clean up information to prepare for next command */
@@ -47,14 +47,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 	switch (cmd) {
 		case RD_CREAT:
 			printk("\nCase: RD_CREAT()...\n");
-
 			info.size = strlen_user((char *) arg);
 			info.pathname = (char *) kmalloc(info.size, GFP_KERNEL);
-
 			copy_from_user(info.pathname, (char *) arg, info.size);
-			// printk("<1> info->size : %u\n", info.size);
-			// printk("<1> info->pathname: %s\n", info.pathname);
-
 			ret = k_creat(info.pathname);
 			cleanInfo(&info);
 			return ret;
@@ -62,14 +57,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 		case RD_MKDIR:
 			printk("\nCase: RD_MKDIR()...\n");
-
 			info.size = strlen_user((char *) arg);
 			info.pathname = (char *) kmalloc(info.size, GFP_KERNEL);
-
 			copy_from_user(info.pathname, (char *) arg, info.size);
-			// printk("<1> info->size : %u\n", info.size);
-			// printk("<1> info->pathname: %s\n", info.pathname);
-
 			ret = k_mkdir(info.pathname);
 			cleanInfo(&info);
 			return ret;
@@ -77,14 +67,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 		case RD_OPEN:
 			printk("\nCase: RD_OPEN()...\n");
-
 			info.size = strlen_user((char *) arg);
 			info.pathname = (char *) kmalloc(info.size, GFP_KERNEL);
-
 			copy_from_user(info.pathname, (char *) arg, info.size);
-			// printk("<1> info->size : %d\n", info.size);
-			// printk("<1> info->pathname: %s\n", info.pathname);
-
 			ret = k_open(info.pathname);
 			cleanInfo(&info);
 			return ret;
@@ -92,73 +77,40 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 		case RD_CLOSE:
 			printk("\nCase : RD_CLOSE()...\n");
-
 			copy_from_user(&fd, (int *)arg, sizeof(int));
-			// printk("<1> fd : %d\n", fd);
-
 			ret = k_close(fd);
 			return ret;
 			break;
 
 		case RD_READ:
 			printk("\nCase: RD_READ()...\n");
-
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
-			// printk("<1> param->fd : %d\n", param.fd);
-			// printk("<1> param->address : %x\n", param.address);
-			// printk("<1> param->numBytes : %d\n", param.numBytes);
-
-			printk("Data before k_read() : %s\n", param.address);
 			ret = k_read(param.fd, param.address, param.numBytes);
-			printk("Data after k_read() : %s\n", param.address);
-
 			cleanParam(&param);
 			return ret;
 			break;
 
 		case RD_WRITE:
 			printk("\nCase: RD_WRITE()...\n");
-
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
-			// printk("<1> param->fd : %d\n", param.fd);
-			// printk("<1> param->address : %x\n", param.address);
-			// printk("<1> param->numBytes : %d\n", param.numBytes);
-			// printk("Data before k_write() : %s\n", param.address);
-			// printk("Pos before write(): %d\n", fdTable[param.fd]->filePos);
 			ret = k_write(param.fd, param.address, param.numBytes);
-			// printk("Pos after write(): %d\n", fdTable[param.fd]->filePos);
-			// printk("Data after k_write() : %s\n", param.address);
-
 			cleanParam(&param);
 			return ret;
 			break;
 
 		case RD_LSEEK:
 			printk("\nCase: RD_LSEEK()...\n");
-
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
-			// printk("<1> param->fd : %d\n", param.fd);
-			// printk("<1> param->address : %x\n", param.address);
-			// printk("<1> param->numBytes (offset) : %d\n", param.numBytes);
-
-			// printk("<1> Pos before lseek(): %d\n", fdTable[param.fd]->filePos);
 			ret = k_lseek(param.fd, param.numBytes);
-			// printk("<1> Pos after lseek(): %d\n", fdTable[param.fd]->filePos);
-
 			cleanParam(&param);
 			return ret;
 			break;
 
 		case RD_UNLINK:
 			printk("\nCase: RD_UNLINK()...\n");
-
 			info.size = strlen_user((char *) arg);
 			info.pathname = (char *) kmalloc(info.size, GFP_KERNEL);
-
 			copy_from_user(info.pathname, (char*) arg, info.size);
-			// printk("<1> info->size : %u\n", info.size);
-			// printk("<1> info->pathname: %s\n", info.pathname);
-
 			ret = k_unlink(info.pathname);
 			cleanInfo(&info);
 			return ret;
@@ -167,13 +119,8 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		case RD_READDIR: 
 			printk("\nCase: RD_READDIR()...\n");
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
-			printk("<1> param->fd : %d\n", param.fd);
-			printk("<1> param->address : %x\n", param.address);
-			printk("<1> param->numBytes (offset) : %d\n", param.numBytes);
-
 			retAddress = (char *) kmalloc(NUMEPB, GFP_KERNEL);
 			ret = k_readdir(param.fd, retAddress);
-
 			copy_to_user(param.address, retAddress, NUMEPB);
 			cleanParam(&param);
 			return ret; 

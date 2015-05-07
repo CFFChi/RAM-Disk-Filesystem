@@ -31,18 +31,16 @@ int readDirEntry(short iIndex, int filePos, struct DirEntry *dirEntry) {
 	unsigned char *data; 
 	struct DirEntry *tempDirEntry; 
 
-	data = (unsigned char *) kmalloc(MAXFSZ, GFP_KERNEL);
-	possibleSize = 0;
+	data = (unsigned char *) kmalloc(BLKSZ, GFP_KERNEL);
 
-	possibleSize = adjustPosition(iIndex, data);
-	
-	printk("data after: %s\n", data);
-	printk("possibleSize: %s\n", possibleSize);
+	if ((possibleSize = adjustPosition(iIndex, data)) == 0) {
+		return 0; 
+	} 
 
 	if (filePos >= possibleSize - 1) {
 		printk("readDirEntry() Error : File position is greater than max possible size\n");
 		return -1; 
-	} 
+	}
 
 	while ((filePos + NUMEPB) <= possibleSize) {
 		tempDirEntry = (struct DirEntry *) kmalloc(sizeof(struct DirEntry), GFP_KERNEL);
@@ -51,9 +49,10 @@ int readDirEntry(short iIndex, int filePos, struct DirEntry *dirEntry) {
 		if (tempDirEntry->inode == 0) {
 			filePos += NUMEPB;
 		} else {
+			// printk("tempDirEntry : %s\n", tempDirEntry);
 			memcpy(dirEntry, tempDirEntry, NUMEPB);
 			fdTable[iIndex]->filePos = filePos + NUMEPB;
-			// kfree(data);
+			kfree(data);
 			kfree(tempDirEntry);
 			return 1;
 		}
