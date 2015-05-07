@@ -20,16 +20,16 @@ static struct file_operations proc_operations;
 static struct proc_dir_entry *proc_entry;
 static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
 
+/* Clean up information to prepare for next command */
 void cleanInfo(struct IoctlInfo *info) {
-	/* Clean up information to prepare for next command */
 	info->size = 0;
 	info->pathname = 0;
 	info = NULL;
 	return;
 }
 
+/* Clean up parameters to prepare for next command */
 void cleanParam(struct IOParameter *param) {
-	/* Clean up parameters to prepare for next command */
 	param->fd = 0;
 	param->address = 0;
 	param->numBytes = 0;
@@ -127,7 +127,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			break;
 
 		default:
-			printk("\nUnknown ioctl() command. Exiting...\n");
+			printk("\nUnknown ioctl command...\n");
 			return -1;
 	}
 }
@@ -168,10 +168,10 @@ static int __init initialiaze_routine(void) {
 	if ((ret = initializeRAMDISK()) != 0) {
 		printk("initialize_routine() Error : Could not initialize RAMDISK\n");
 		return 1;
+	} else {
+		printk("<1> Ramdisk Initialization Complete...\n");
+		return 0;
 	}
-
-	printk("<1> Ramdisk Initialization Complete...\n");
-	return 0;
 }
 
 static void __exit cleanup_routine(void) {

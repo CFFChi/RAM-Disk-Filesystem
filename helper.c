@@ -442,9 +442,8 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 }
 
 int adjustPosition(short index, unsigned char* data) {
-
 	int i, j, k, possibleSize; 
-
+	
 	possibleSize = 0; 
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {

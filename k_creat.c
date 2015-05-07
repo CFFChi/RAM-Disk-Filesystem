@@ -26,7 +26,7 @@ int k_creat(char* pathname) {
 	parentInode = 0;
 	fileName = (char *) kmalloc(14, GFP_KERNEL);
 
-	/* Retrieve last directory entry in pathname and store in parentInode */
+	/* Retrieve last directory entry in pathname and store parent index in parentInode */
 	if ((ret = fileExists(pathname, fileName, &parentInode)) != 0) {
 		printk("k_creat() Error : File already exists or Error in fileExists()\n");
 		return -1;
@@ -35,9 +35,9 @@ int k_creat(char* pathname) {
 	if ((freeInode = getFreeInode()) < 0) {
 		printk("k_creat() Error : Could not find free index node\n");
 		return -1;
+	} else {
+		setRegInode(freeInode, 0);
 	}
-
-	setRegInode(freeInode, 0);
 
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");

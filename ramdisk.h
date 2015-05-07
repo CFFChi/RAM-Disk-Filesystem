@@ -35,19 +35,18 @@
 #define RD_MKDIR	 _IOR(MAGIC_NUMBER, 1, char *)
 #define RD_OPEN	     _IOR(MAGIC_NUMBER, 2, char *)
 #define RD_CLOSE	 _IOR(MAGIC_NUMBER, 3, int)
-#define RD_READ		 _IOR(MAGIC_NUMBER, 4, struct IOParameter)
+#define RD_READ		_IOWR(MAGIC_NUMBER, 4, struct IOParameter)
 #define RD_WRITE	_IOWR(MAGIC_NUMBER, 5, struct IOParameter)
 #define RD_LSEEK	 _IOR(MAGIC_NUMBER, 6, struct IOParameter)
 #define RD_UNLINK 	 _IOR(MAGIC_NUMBER, 7, char *)
-#define RD_READDIR 	 _IOR(MAGIC_NUMBER, 8, struct IOParameter)
+#define RD_READDIR 	_IOWR(MAGIC_NUMBER, 8, struct IOParameter)
 
 /* Bitmap Operation */
 #define SET_BIT_MASK1(x) (0x01 << (7-x))		// Sets bit x to 1 and remaining bits to 0
 #define SET_BIT_MASK0(x) (~SET_BIT_MASK1(x))	// Sets bit x to 0 and remaining bits to 1
 
-
 /* FileDescriptor - Keeps track of opened files on a per-process basis
- *		rPosition : Current read position of a file
+ *		rPosition : Current read position of a files
  *		wPosition : Current write position of a file
  *		inodePtr : Pointer to the index node of a file
  */

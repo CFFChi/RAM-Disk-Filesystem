@@ -15,129 +15,121 @@ extern struct FileDescriptor *fdTable[1024];
 void cleanupDirLocation(union Block *location) {
 	unsigned int bIndex;
 	unsigned char byte, offset;
-
 	/* Retrieve element index in free block */
 	bIndex = (location - ramdisk->fb) / BLKSZ;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
 	byte = ramdisk->bb.byte[bIndex / 8];
-	offset = SET_BIT_MASK0(bIndex % 8);
-	/* Clear the bit specified by bIndex/8 */
-	ramdisk->bb.byte[bIndex / 8] = byte & offset;
+	offset = ~(0x01 << (7 - (bIndex % 8)));
+	/* Clear the bit */
+	ramdisk->bb.byte[bIndex / 8] = byte & offset; 
 	/* Increment number of free blocks available in Super Block*/
 	ramdisk->sb.numFreeBlocks++;
-
-	/* Nullify the current location */
-	// locationToNull = NULL;
-
 	return;
 }
 
-int removeDirEntry(short iIndex, char* filename) {
+int removeDirEntry(short index, char* targetFilename) {
+	int i, j, k, l; 
+	struct DirEntry entry; 
 
-	int i, j, k, l;
-	struct Inode *inode;
-	struct DirBlock *dirBlock;
-	struct PtrBlock *ptrBlock;
-	union Block *location, *singlePtr, *doublePtr;
-
-	inode = &(ramdisk->ib[iIndex]);
-
-	// printk("index in removeDir: %d\n", iIndex);
-
-	if (strncmp(inode->type, "reg", 3) == 0) {
+	if (!strncmp(ramdisk->ib[index].type, "reg", 3)) {
 		printk("removeDirEntry() Error : File is not a directory file\n");
 		return -1;
 	}
-
 	for (i = 0; i < NUMPTRS; i++) {
-		location = inode->location[i];
-
-		if (0 <= i && i <= 7) {
-			if (location == 0) { continue ;	}
-
-			// printk("here\n");
-			dirBlock = &(location->dir);
-
-			for (j = 0; j < NUMEPB; j++) {
-
-				// printk("i: %d, j: %d\n", i , j);
-				// printk("Comparison1: %s AND %s\n", dirBlock->entry[j].filename, filename);
-
-				if (strncmp(dirBlock->entry[j].filename, filename, 14) == 0) {
-
-					memset(&(dirBlock->entry[j]), 0, sizeof(struct DirEntry));
-					if (isEmpty(location)) {
-						cleanupDirLocation(location);
-					}
-					return 0;
+		switch (i) {
+			case DPTR1: 
+			case DPTR2: 
+			case DPTR3: 
+			case DPTR4: 
+			case DPTR5: 
+			case DPTR6: 
+			case DPTR7: 
+			case DPTR8: { 
+				if (ramdisk->ib[index].location[i] == 0) {
+					continue;
 				}
-			}
-		} else if (8 <= i && i <= 9) {
-			if (location == 0) { continue; }
 
-			ptrBlock = &(location->ptr);
-
-			for (j = 0; j < NODESZ; j++) {
-
-				singlePtr = ptrBlock->location[j];
-				if (singlePtr == 0) { continue; }
-
-				dirBlock = &(singlePtr->dir);
-
-				/* Single Redirection Block */
-				if (i == 8) {
-					for (k = 0; k < NUMEPB; k++) {
-						// printk("Comparison2: %s AND %s\n", dirBlock->entry[k].filename, filename);
-						if ((strncmp(dirBlock->entry[k].filename, filename, 14)) == 0) {
-
-							printk("here\n");
-
-							memset(&(dirBlock->entry[k]), 0, sizeof(struct DirEntry));
-							if (isEmpty(singlePtr)) {
-								cleanupDirLocation(singlePtr);
-							}
-						}
-					}
-					/* Depth Zero */
-					if (isEmpty(location)) {
-						cleanupDirLocation(location);
-					}
-					return 0;
-				}
-				/* Double Redirection Block */
-				if (i == 9) {
-					for (k = 0; k < NODESZ; k++) {
-						doublePtr = singlePtr->ptr.location[k];
-						if (doublePtr == 0) { continue; }
-
-						dirBlock = &(doublePtr->dir);
-
-						/* Depth Two */
-						for (l = 0; l < NUMEPB; l++) {
-							printk("Comparison3: %s AND %s\n", dirBlock->entry[l].filename, filename);
-							if (strncmp(dirBlock->entry[l].filename, filename, 14) == 0) {
-								memset(&(dirBlock->entry[l]), 0, sizeof(struct DirEntry));
-								if (isEmpty(doublePtr)) {
-									cleanupDirLocation(doublePtr);
-								}
-							}
-						}
-						/* Depth One */
-						if (isEmpty(singlePtr)) {
-							cleanupDirLocation(singlePtr);
-						}
-						/* Depth Zero */
-						if (isEmpty(location)) {
-							cleanupDirLocation(location);
+				for (j = 0; j < NUMEPB; j++) {
+					entry = ramdisk->ib[index].location[i]->dir.entry[j];
+					if (!strncmp(entry.filename, targetFilename, 14)) {
+						memset(&entry, 0, sizeof(struct DirEntry));
+						if (isEmpty(ramdisk->ib[index].location[i])) {
+							cleanupDirLocation(ramdisk->ib[index].location[i]);
+							ramdisk->ib[index].location[i] = NULL;
 						}
 						return 0;
 					}
 				}
+				continue;
+			}
+
+			case RPTR: {
+				if (ramdisk->ib[index].location[i] == 0) {
+					continue;
+				}
+
+				for (j = 0; j < NODESZ; j++) {
+					if (ramdisk->ib[index].location[i]->ptr.location[j] == 0) {
+						continue;
+					}
+					for (k = 0; k < NUMEPB; k++) {
+						entry = ramdisk->ib[index].location[8]->ptr.location[j]->dir.entry[k];
+						if (!strncmp(entry.filename, targetFilename, 14)) {
+							memset(&entry, 0, sizeof(struct DirEntry));
+							if (isEmpty(ramdisk->ib[index].location[8]->ptr.location[j])) {
+								cleanupDirLocation(ramdisk->ib[index].location[8]->ptr.location[j]);
+								ramdisk->ib[index].location[8]->ptr.location[j] = NULL;
+							}
+							break;
+						}
+					}
+					if (isEmpty(ramdisk->ib[index].location[8])) {
+						cleanupDirLocation(ramdisk->ib[index].location[8]);
+						ramdisk->ib[index].location[8] = NULL;
+					}
+					return 0; 
+				}
+				continue;
+			}
+
+			case RRPTR: {
+				if (ramdisk->ib[index].location[i] == 0) {
+					continue;
+				}
+
+				for (j = 0; j < NODESZ; j++) {
+					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) {
+						continue;
+					}
+					for (k = 0; k < NODESZ; k++) {
+						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) {
+							continue;
+						}
+						for (l = 0; l < NUMEPB; l++) {
+							entry = ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]->dir.entry[l];
+							if (!strncmp(entry.filename, targetFilename, 14)) {
+								memset(&entry, 0, sizeof(struct DirEntry));
+								if (isEmpty(ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k])) {
+									cleanupDirLocation(ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]);
+									ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] = NULL;
+								}
+								break;
+							}
+						}
+						if (isEmpty(ramdisk->ib[index].location[9]->ptr.location[j])) {
+							cleanupDirLocation(ramdisk->ib[index].location[9]->ptr.location[j]);
+							ramdisk->ib[index].location[9]->ptr.location[j] = NULL;
+						}
+					}
+					if (isEmpty(ramdisk->ib[index].location[9])) {
+						cleanupDirLocation(ramdisk->ib[index].location[9]);
+						ramdisk->ib[index].location[9] = NULL;
+					}
+					return 0;
+				}
 			}
 		}
 	}
-	/* Error : Could not find filename */
-	printk("removeDirEntry() Error : Could not find a matching directory file\n");
 	return -1;
 }
 
@@ -299,80 +291,64 @@ int modifyParentInodeMinus(char *pathname, int blkSize) {
 }
 
 int k_unlink(char* pathname) {
-
-	int index, size, ret;
+	int index, ret;
 	short parentInode;
 	char* filename;
 
-	// printk("%s\n", (*ramdisk->ib[0].location[0]).dir.entry[0].filename);
+	parentInode = 0; 
+	filename = (char *) kmalloc(14, GFP_KERNEL);
 
-	if (strncmp(pathname, "/\0", 2) == 0) {
+	/* Check that the file is not the root */
+	if (!strncmp(pathname, "/\0", 2)) {
 		printk("k_unlink() Error : You can not delete the root\n");
 		return -1;
 	}
-
-	filename = (char *) kmalloc(14, GFP_KERNEL);
-
-	parentInode = 0;
-
-	/* index is the index node number */
+	/* Check that the file exists */
 	if ((index = fileExists(pathname, filename, &parentInode)) <= 0) {
 		printk("k_unlink() Error : File does not exist\n");
 		return -1;
 	}
-
 	/* Check that the file is not open */
-	if (fdTable[index] == NULL) {
-		/* Directory File */
-		if (strncmp(ramdisk->ib[index].type, "dir", 3) == 0) {
-			/* Check that the directory is empty */
-			if (ramdisk->ib[index].size != 0) {
-				printk("k_unlink() Error : You can not remove a non-empty directory");
-				return -1;
-			}
-
-			/* Set the index node to zero */
-			memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
-
-			/* Increment number of free index node */
-			ramdisk->sb.numFreeInodes++;
-			// printk("availability: %d\n", ramdisk->sb.numFreeInodes);
-			if ((ret = removeDirEntry(parentInode, filename)) != 0) {
-				printk("k_unlink() Error : Could not remove directory entry\n");
-				return -1;
-			}
-
-			return 0;
-		}
-		/* Regular File */
-		else if (strncmp(ramdisk->ib[index].type, "reg", 3) == 0) {
-			size = ramdisk->ib[index].size;
-			// printk("index in k_unlink reg version: %d\n", index);
-			// printk("parentInode in k_unlink: %d\n", parentInode);
-			// printk("%s\n", (*ramdisk->ib[0].location[0]).dir.entry[0].filename);
-			// memset(ramdisk->ib[index].type, 0, 4);
-
-			/* Modify/Remove index node entries in parent directory of file */
-			if ((ret = modifyParentInodeMinus(pathname, size)) != 0) {
-				printk("k_unlink() Error : Could not modify the information of parent index nodes\n");
-				return -1;
-			}
-
-			/* Remove file */
-			if ((ret = removeRegEntry(index)) != 0) {
-				printk("k_unlink() Error : Could not remove regular file\n");
-				return -1;
-			}
-			
-			/* Increment number of available free inodes*/
-			ramdisk->sb.numFreeInodes++;
-			// printk("availability in k_unlink: %d\n", ramdisk->sb.numFreeInodes);
-			return 0;
-		}
-	} else {
-		printk("k_unlink() Error : File to delete is currently open\n");
+	if (fdTable[index] != NULL) {
+		printk("k_unlink() Error : You can not delete a file that is open\n");
 		return -1;
 	}
+
+	/* Directory File */
+	if (!strncmp(ramdisk->ib[index].type, "dir", 3)) {
+		/* Check that the directory is empty */
+		if (ramdisk->ib[index].size > 0) {
+			printk("k_unlink() Error : You can not remove a non-empty directory");
+			return -1;
+		}
+		if ((ret = removeDirEntry(parentInode, filename)) != 0) {
+			printk("k_unlink() Error : Could not remove directory entry\n");
+			return -1;
+		}
+		/* Set the index node to zero */
+		memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
+		/* Increment number of free index node */
+		ramdisk->sb.numFreeInodes++;
+		return 0;
+	}
+	/* Regular File */
+	else if (!strncmp(ramdisk->ib[index].type, "reg", 3)) {
+		/* Modify/Remove index node entries in parent directory of file */
+		if ((ret = modifyParentInodeMinus(pathname, ramdisk->ib[index].size)) != 0) {
+			printk("k_unlink() Error : Could not modify the information of parent index nodes\n");
+			return -1;
+		}
+		/* Remove file */
+		if ((ret = removeRegEntry(index)) != 0) {
+			printk("k_unlink() Error : Could not remove regular file\n");
+			return -1;
+		}
+		/* Set the index node to zero */
+		memset(&ramdisk->ib[index], 0, sizeof(struct Inode));
+		/* Increment number of available free index node*/
+		ramdisk->sb.numFreeInodes++;
+		return 0;
+	} 
 	return -1;
 }
 
