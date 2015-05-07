@@ -40,9 +40,7 @@ int k_creat(char* pathname) {
 		return -1;
 	}
 
-	printk("here1\n");
 	setRegInode(freeInode, 0);
-	printk("here2\n");
 
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
