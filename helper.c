@@ -213,6 +213,7 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 				return -1;
 			}
 		}
+		tempPath[0] = '\0';
 	}
 	/* Check that the pathname is not null */
 	if (pathName[0] == '\0') {
