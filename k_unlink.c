@@ -11,7 +11,6 @@
 extern struct Ramdisk *ramdisk;
 extern struct FileDescriptor *fdTable[1024];
 
-
 void cleanupDirLocation(union Block *location) {
 	unsigned int bIndex;
 	unsigned char byte, offset;
@@ -30,15 +29,16 @@ void cleanupDirLocation(union Block *location) {
 int removeDirEntry(short index, char* targetFilename) {
 	int i, j, k, l; 
 	struct DirEntry entry; 
-
+	/* Increment targetFilename to get rid of leading root character */
 	targetFilename++;
-
+	/* Check that the file is regular file */
 	if (!strncmp(ramdisk->ib[index].type, "reg", 3)) {
 		printk("removeDirEntry() Error : File is not a directory file\n");
 		return -1;
 	}
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
+			/* Direct Pointer */
 			case DPTR1: 
 			case DPTR2: 
 			case DPTR3: 
@@ -61,13 +61,11 @@ int removeDirEntry(short index, char* targetFilename) {
 					}
 				}
 			}
-
+			/* Single Indirect Pointer */
 			case RPTR: {
 				if (ramdisk->ib[index].location[8] == 0) { continue; }
-
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[i]->ptr.location[j] == 0) { continue; }
-
 					for (k = 0; k < NUMEPB; k++) {
 						entry = ramdisk->ib[index].location[8]->ptr.location[j]->dir.entry[k];
 						// printk("CompareRPTR: %s AND %s\n", entry.filename, targetFilename);
@@ -86,16 +84,13 @@ int removeDirEntry(short index, char* targetFilename) {
 					return 0; 
 				}
 			}
-
+			/* Double Indirect Pointer */
 			case RRPTR: {
 				if (ramdisk->ib[index].location[9] == 0) { continue; }
-
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) { continue; }
-
 					for (k = 0; k < NODESZ; k++) {
 						if (ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k] == 0) { continue; }
-
 						for (l = 0; l < NUMEPB; l++) {
 							entry = ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k]->dir.entry[l];
 							// printk("CompareRRPTR: %s AND %s\n", entry.filename, targetFilename);
@@ -128,7 +123,6 @@ int removeDirEntry(short index, char* targetFilename) {
 void cleanupRegLocation(union Block *location) {
 	unsigned int bIndex;
 	unsigned char byte, offset;
-
 	/* Retrieve element index in free block */
 	bIndex = (location - ramdisk->fb) / BLKSZ;
 	/* Figure out corresponding byte number and offset in Bitmap Block */
@@ -145,7 +139,7 @@ void cleanupRegLocation(union Block *location) {
 
 int removeRegEntry(short index) {
 	int i, j, k;
-
+	/* Traverse through the index nodes to find the matching regular file entry */
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) { return 0; }
 		switch (i) {
@@ -160,7 +154,7 @@ int removeRegEntry(short index) {
 				cleanupRegLocation(ramdisk->ib[index].location[i]);
 				continue;
 			}
-
+			/* Single Indirect Pointer */
 			case RPTR: {
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[8]->ptr.location[j] == 0) { break; }
@@ -169,7 +163,7 @@ int removeRegEntry(short index) {
 				cleanupRegLocation(ramdisk->ib[index].location[8]);
 				continue;
 			}
-
+			/* Double Indirect Pointer */
 			case RRPTR: {
 				for (j = 0; j < NODESZ; j++) {
 					if (ramdisk->ib[index].location[9]->ptr.location[j] == 0) { break; }
@@ -193,14 +187,11 @@ int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int 
 	int index;
 	unsigned int pathSize;
 	char *tempPath, *subPath; 
-
-	index = 0; pathSize = 0; pathName++;
+	index = 0; pathSize = 0; pathName++; // Increment pathname to get rid of root character
 	tempPath = (char *) kmalloc(14, GFP_KERNEL);
-
 	/* Walk through the absolute pathName split up with / character */
 	while ((subPath = strchr(pathName, '/')) != NULL) {
 		pathSize = subPath - pathName;
-
 		if (1 > pathSize || pathSize > 14) {
 			printk("minusParentInodeSize() Error: Pathname is too small or too big (14 character max)\n");
 			return -1;
@@ -208,12 +199,12 @@ int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int 
 			strncpy(tempPath, pathName, pathSize);
 			tempPath[pathSize] = '\0';
 			pathName = subPath + 1;
-
+			/* Get the index node of the directory in the pathname */
 			if ((index = getInode(index, tempPath)) < 0) {
 				printk("minusParentInodeSize() Error: Could not get index node from pathName\n");
 				return -1;
 			}
-
+			/* Store the parent index node */
 			*currentInode = index;
 			/* Reduce the size of current index node by blkSize */
 			ramdisk->ib[index].size = ramdisk->ib[index].size - blkSize;
@@ -227,7 +218,6 @@ int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int 
 int modifyParentInodeMinus(char *pathName, int blkSize) {
 	int ret, index, pathSize;
 	char* lastPath;
-
 	/* Check that the file is not the root */
 	if (pathName[0] != '/') {
 		printk("fileExists() Error : Path requires the root character\n");
@@ -238,24 +228,21 @@ int modifyParentInodeMinus(char *pathName, int blkSize) {
 		printk("fileExists() Error : Path requires a file name following the root character\n");
 		return -1;
 	}
-
 	index = 0; 
 	lastPath = (char *) kmalloc(14, GFP_KERNEL);
-
 	/* Reduce the size of inode in root by blkSize */
 	ramdisk->ib[index].size = ramdisk->ib[index].size - blkSize;
-
 	/* Recursively go through each parent and reduce each inode by blkSize */
 	if ((ret = minusParentInodeSize(pathName, lastPath, &index, blkSize)) < 0) {
 		printk("modifyParentInode() Error : Could not properly decrease parent inode size\n");
 		return -1;
 	}
-
+	/* Check that the pathname is not null */
 	if (pathName[0] == '\0') {
 		printk("fileExists() Error : Last character of path name is /\n");
 		return -1;
 	}
-
+	/* Copy the last directory name into the lastPath */
 	strncpy(lastPath, pathName, pathSize);
 	return removeDirEntry(index, lastPath);
 }
@@ -264,16 +251,13 @@ int k_unlink(char* pathName) {
 	int index, ret;
 	short parentInode;
 	char* filename;
-
 	parentInode = 0; 
 	filename = (char *) kmalloc(14, GFP_KERNEL);
-
 	/* Check that the file is not the root */
 	if (!strncmp(pathName, "/\0", 2)) {
 		printk("k_unlink() Error : You can not delete the root\n");
 		return -1;
 	}
-
 	/* Check that the file exists */
 	if ((index = fileExists(pathName, filename, &parentInode)) <= 0) {
 		printk("k_unlink() Error : File does not exist\n");
@@ -284,7 +268,6 @@ int k_unlink(char* pathName) {
 		printk("k_unlink() Error : You can not delete a file that is open\n");
 		return -1;
 	}
-
 	/* Directory File */
 	if (!strncmp(ramdisk->ib[index].type, "dir", 3)) {
 		/* Check that the directory is empty */

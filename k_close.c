@@ -16,7 +16,6 @@ int k_close(int index) {
 		printk("k_close() Error : You can close a non-existent file\n");
 		return -1;
 	} 
-
 	fdTable[index] = NULL;
 	kfree(fdTable[index]);
 	return 0;

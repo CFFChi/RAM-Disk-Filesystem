@@ -14,12 +14,10 @@ extern struct FileDescriptor *fdTable[1024];
 int readFile(short iIndex, int filePos, unsigned char *data, int size) {
 	unsigned char *newData;
 	int newSize, possibleSize, maxSize;
-
 	newData = (unsigned char *) kmalloc(MAXFSZ, GFP_KERNEL);
 	if ((possibleSize = adjustPosition(iIndex, newData)) < 0) {
 		return 0;
 	}
-
 	newSize = filePos + size;
 	if (newSize > possibleSize) {
 		/* Overflow File Size Case */
@@ -42,22 +40,18 @@ int readFile(short iIndex, int filePos, unsigned char *data, int size) {
 int k_read(int fd, char* address, int numBytes) {
 	unsigned char *tempData;
 	int dataSize, position, numBytesWritten, totalBytes;
-
 	/* File descriptor refers to non-existent file */
 	if (fdTable[fd] == NULL) {
 		printk("k_write() Error : File does not exist or file descriptor is not valid\n");
 		return -1;
 	}
-
-	/* File descriptor refers to a directory file */
+	/* Check that file is a regular file */
 	if (strncmp(ramdisk->ib[fd].type, "reg", 3)) {
 		printk("k_write() Error : File is not a regular file\n");
 		return -1;
 	}
-
 	tempData = (unsigned char *) kmalloc(DBLKSZ, GFP_KERNEL);
 	dataSize = 0; position = 0; numBytesWritten = 0; totalBytes = 0;
-
 	while (position < numBytes) {
 		dataSize = numBytes - position;
 		if (dataSize > DBLKSZ) {

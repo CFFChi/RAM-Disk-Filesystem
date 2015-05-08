@@ -64,6 +64,7 @@ void setRootInode(int iIndex, int size) {
 
 int isEmpty(union Block *location) {
 	int i;
+	/* Loop through the regular file data block and return true if it is empty */
 	for (i = 0; i < BLKSZ; i++) {
 		if (location->reg.data[i] != 0) {
 			return 0;
@@ -78,6 +79,7 @@ int getFreeInode(void) {
 		printk("getFreeInode() Error : There is no more free inode in ramdisk\n");
 		return -1;
 	} else {
+		/* Loop through the index node and return a free index */
 		for (i = 0; i < MAXFCT; i++) {
 			if (ramdisk->ib[i].type[0] == 0) {
 				ramdisk->sb.numFreeInodes--;
@@ -96,6 +98,7 @@ int getFreeBlock(void) {
 		printk("getFreeBlock() Error : There is no more free block in ramdisk\n");
 		return -1;
 	}
+	/* Loop through the bitmap block and return a free index */
 	for (i = 0; i < BTMPSZ; i++) {
 		byte = ramdisk->bb.byte[(i / 8)];
 		offset = 7 - (i % 8);
@@ -116,8 +119,8 @@ int getInode(int index, char* targetFilename) {
 	if (strncmp(ramdisk->ib[index].type, "dir", 3)) {
 		printk("getinode() Error : Inode type is not a directory file\n");
 		return -1; 
-	}
-
+	}	
+	/* Loop through the pointer and return index node that matches the target filename */
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
 			case DPTR1: 
@@ -140,7 +143,6 @@ int getInode(int index, char* targetFilename) {
 				}
 				continue;
 			}
-
 			case RPTR: {
 				if (ramdisk->ib[index].location[8] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
@@ -156,7 +158,6 @@ int getInode(int index, char* targetFilename) {
 				}
 				continue;
 			}
-
 			case RRPTR: {
 				if (ramdisk->ib[index].location[9] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
@@ -184,7 +185,6 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	int index, currentIndex;
 	unsigned int pathSize;
 	char* tempPath, *subPath;
-
 	/* Check the the root character is given */
 	if (pathName[0] != '/') {
 		printk("fileExists() Error : Pathname requires the root character\n");
@@ -197,7 +197,6 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	}
 	index = 0; currentIndex = 0; pathName++; // Increment pathname to remove the preceding / character
 	tempPath = (char *) kzalloc(14, GFP_KERNEL);
-
 	/* Delimit the path with slash character and get the index node of each directory */
 	while ((subPath = strchr(pathName, '/')) != NULL) {
 		pathSize = subPath - pathName; 
@@ -249,7 +248,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 				return -1;
 			}
 			assignFreeBlockDPTR(index, i, fbDirect);
-
 			switch (i) {
 				case DPTR1: 
 				case DPTR2: 
@@ -263,7 +261,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 					return 0; 
 					continue;
 				}
-
 				case RPTR: {
 					if ((fbSingle = getFreeBlock()) < 0) {
 						printk("assignInode() Error : Could not find free block in ramdisk\n");
@@ -274,7 +271,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 					return 0;
 					continue;
 				}
-
 				case RRPTR: {
 					if ((fbDouble1 = getFreeBlock()) < 0) {
 						printk("assignInode() Error : Could not find free block in ramdisk\n");
@@ -311,7 +307,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 					}
 					continue;
 				}
-
 				case RPTR: {
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[8]).ptr.location[j] == 0)  {
@@ -334,7 +329,6 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 					}
 					continue;
 				}
-
 				case RRPTR: {
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
@@ -389,7 +383,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 		printk("searchParentInodes() Error : File is not a directory file\n");
 		return -1;
 	}
-
+	/* Loop through the pointers and store the index into the array of parent inodes */
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
 			case DPTR1: 
@@ -401,7 +395,6 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case DPTR7: 
 			case DPTR8: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
-
 				for (j = 0; j < NUMEPB; j++) {
 					entryInode = (*ramdisk->ib[index].location[i]).dir.entry[j].inode;
 					if (entryInode == targetInode) { return 1; }
@@ -413,7 +406,6 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 				}
 				continue;
 			}
-			
 			case RPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
@@ -431,7 +423,6 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 				}
 				continue;
 			}
-
 			case RRPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
@@ -460,14 +451,12 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 
 int adjustPosition(short index, unsigned char* data) {
 	int i, j, k, possibleSize; 
-
 	possibleSize = -1; 
 	/* Compute the maximum possible file size */
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {
 			return possibleSize; 
 		}
-
 		switch (i) {
 			case DPTR1: 
 			case DPTR2: 
@@ -482,7 +471,6 @@ int adjustPosition(short index, unsigned char* data) {
 				possibleSize += BLKSZ;
 				continue;
 			}
-
 			case RPTR: {
 				for (j = 0; j < NODESZ; j++) {
 					if ((*ramdisk->ib[8].location[i]).ptr.location[j] == 0) {
@@ -494,7 +482,6 @@ int adjustPosition(short index, unsigned char* data) {
 				}
 				continue;
 			}
-
 			case RRPTR: {
 				for (j = 0; j < NODESZ; j++) {
 					if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {

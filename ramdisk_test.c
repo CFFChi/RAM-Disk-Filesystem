@@ -24,11 +24,11 @@
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
-// #define TEST1
-// #define TEST2
-// #define TEST3
+#define TEST1
+#define TEST2
+#define TEST3
 #define TEST4
-// #define TEST5
+#define TEST5
 
 #define USE_RAMDISK
 
@@ -54,8 +54,7 @@
 #define CLOSE   close
 #define LSEEK(fd, offset)   lseek(fd, offset, SEEK_SET)
 
-int my_readdir(int fd, char* str)
-{
+int my_readdir(int fd, char* str) {
   strcpy(str, "blah");
   return 1;
 }

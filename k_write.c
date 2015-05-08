@@ -29,7 +29,7 @@ void writeToRegDataRRPTR(int index, int p1, int p2, unsigned char* dataChunk, in
 int plusParentInodeSize(short targetIndex, short* parentInodes) {
 	int ret, size, root;
 	root = 0; size = 1;
-	/* Get the directories to the file from root and store it  into dst array */
+	/* Get the directories to the file from root and store it into array */
 	if ((ret = searchParentInodes(root, targetIndex, &size, parentInodes)) < 0) {
 		printk("plusParentInodeSize() Error : Could not get parent directories\n");
 		return -1;
@@ -63,12 +63,15 @@ int write(short index, unsigned char *data, int size) {
 	position = 0; remainingBytes = size; 
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {
+			/* Find a free index node */
 			if ((fbDirect = getFreeBlock()) < 0) {
 				printk("write() Error : Could find a free block to allocate\n");
 				return -1;
 			}
+			/* Assign this index node the free block */
 			assignFreeBlockDPTR(index, i, fbDirect);
 
+			/* Direct Pointers */
 			switch (i) {
 				case DPTR1: 
 				case DPTR2: 
@@ -78,16 +81,18 @@ int write(short index, unsigned char *data, int size) {
 				case DPTR6: 
 				case DPTR7: 
 				case DPTR8: {
+					/* If the new size is larger than 256 bytes, just set the size to 256 bytes */
 					if ((newSize = size - position) > BLKSZ) { 
 						newSize = BLKSZ;
 					}
 					data = data + newSize; 
+					/* Write the data into index node */
 					writeToRegDataDPTR(index, i, data, newSize);
 					position += newSize;
 					if ((remainingBytes -= position) < BLKSZ) { return 0; }
 					continue;
 				}
-
+				/* Single Indirect Pointer */
 				case RPTR: {
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[8]).ptr.location[j] == 0) {
@@ -108,7 +113,7 @@ int write(short index, unsigned char *data, int size) {
 					}
 					continue;
 				}
-
+				/* Double Indirect Pointer */
 				case RRPTR: {
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
@@ -149,7 +154,6 @@ int write(short index, unsigned char *data, int size) {
 int writeFile(short index, int filePos, unsigned char *data, int dataSize) {
 	int position, ret, newSize;
 	unsigned char *newData;
-
 	/* Initialize these values  */
 	position = 0;
 	newData = (unsigned char *) kmalloc(dataSize, GFP_KERNEL);
@@ -201,13 +205,11 @@ int writeFile(short index, int filePos, unsigned char *data, int dataSize) {
 int k_write(int fd, char* address, int numBytes) {
 	unsigned char *tempData;
 	int dataSize, position, numBytesWritten, totalBytes;
-
 	/* File descriptor refers to non-existent file */
 	if (fdTable[fd] == NULL) {
 		printk("k_write() Error : File does not exist or file descriptor is not valid\n");
 		return -1;
 	}
-
 	/* File descriptor refers to a directory file */
 	if (strncmp(ramdisk->ib[fd].type, "reg", 3)) {
 		printk("k_write() Error : File is not a regular file\n");

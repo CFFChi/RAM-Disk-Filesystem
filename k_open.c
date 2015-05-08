@@ -26,7 +26,6 @@ int k_open(char *pathname) {
 
 	parentInode = 0;
 	filename = (char *) kmalloc(14, GFP_KERNEL);
-
 	/* Check if the file exist in the system */
 	if ((index = fileExists(pathname, filename, &parentInode)) <= 0) {
 		printk("k_open() Error : File does not exist\n");
@@ -37,12 +36,9 @@ int k_open(char *pathname) {
 		printk("k_open() Error : Other process is accessing this file descriptor\n");
 		return -1;
 	}
-
 	fd = (struct FileDescriptor *) kmalloc(sizeof(struct FileDescriptor), GFP_KERNEL);
-
 	/* Build the file descriptor for this file */
 	initializeFD(fd, index, &ramdisk->ib[index]);
-
 	return index;
 }
 
