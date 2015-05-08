@@ -1,19 +1,19 @@
-#define RDSKSZ 	2097152
-#define BLKSZ	256
-#define BTMPSZ 	(4 * BLKSZ)
-#define NODESZ 	64
+#define RDSKSZ 	2097152 // 2MB
+#define BLKSZ	256		
+#define BTMPSZ 	(4 * BLKSZ) // Size of Bitmap Block
+#define NODESZ 	64			// Size of Pointer
 
-#define NUMEPB 		16  // max entries per directory block; BLKSZ/(size of dirEntry)
-#define NUMPTRS 	10  // number of pointers for location field in inode
-#define NUMDPTRS	8  // number of direct pointers
+#define NUMEPB 		16  // Max entries per directory block
+#define NUMPTRS 	10  // Number of pointers in block
+#define NUMDPTRS	8   // Number of direct pointers
 
-#define FNAMESZ 14  //max filename size
-#define DBLKSZ 	(NUMDPTRS * BLKSZ) //total size of blocks pointed to by direct pointers in location
+#define FNAMESZ 14 					// Max file name length
+#define DBLKSZ 	(NUMDPTRS * BLKSZ)  // Size of Direct Pointer
 
-#define IBARR 	1024  	// num nodes in Inode array
-#define FBARR 	(RDSKSZ/BLKSZ - (1 + 256 + 4)) //num blocks in File array
-#define IBARRSZ (IBARR * NODESZ)
-#define FBARRSZ (FBARR * BLKSZ)
+#define IBARR 	1024  						   // Number nodes in Inode array
+#define FBARR 	(RDSKSZ/BLKSZ - (1 + 256 + 4)) // Number of blocks in File array
+#define IBARRSZ (IBARR * NODESZ)			   // Size of Index Node Partition
+#define FBARRSZ (FBARR * BLKSZ)				   // Size of Free Block Partition
 
 #define MAXFSZ	((NUMDPTRS*BLKSZ) + (NODESZ*BLKSZ) + (NODESZ*NODESZ*BLKSZ))  // Max file size
 #define MAXFCT	1024 														 // Max file count
@@ -65,6 +65,18 @@
 struct IoctlInfo {
 	char *pathname;
 	unsigned int size;
+};
+
+/*
+ * IOParam
+ *		fd : File descriptor
+ *		address : Address of Data
+ *		numBytees : Size of file 
+ */
+struct IOParameter {
+	int fd;
+	char *address;
+	int numBytes;
 };
 
 /* Superblock (Size: 256 bytes)
@@ -157,18 +169,6 @@ struct Ramdisk {
 	struct Inode ib[IBARR];
 	struct Bitmap	bb;
 	union Block fb[FBARR];
-};
-
-/*
- * IOParam
- *		fd : File descriptor
- *		address : Address of Data
- *		numBytees : Size of file 
- */
-struct IOParameter {
-	int fd;
-	char *address;
-	int numBytes;
 };
 
 /* ioctl Functions */

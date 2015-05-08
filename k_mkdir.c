@@ -35,7 +35,6 @@ int k_mkdir(char* pathname) {
 	}
 
 	/* File does not exist so create the directory */
-	printk("Creating directory : %s\n", dirName);
 
 	/* Find a free index node */
 	if ((freeInode = getFreeInode()) < 0) {
@@ -48,9 +47,10 @@ int k_mkdir(char* pathname) {
 
 	if ((ret = assignInode(parentInode, freeInode, dirName, 1)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
+		kfree(dirName);
 		return -1;
 	}
-
+	kfree(dirName);
 	return 0;
 }
 

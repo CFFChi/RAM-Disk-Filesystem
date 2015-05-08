@@ -29,6 +29,7 @@ int k_creat(char* pathname) {
 	/* Retrieve last directory entry in pathname and store parent index in parentInode */
 	if ((ret = fileExists(pathname, fileName, &parentInode)) != 0) {
 		printk("k_creat() Error : File already exists or Error in fileExists()\n");
+		kfree(fileName);
 		return -1;
 	}
 	/* Find free index node */
@@ -39,11 +40,14 @@ int k_creat(char* pathname) {
 		/* Set the type and size of the retrieved index node */
 		setRegInode(freeInode, 0);
 	}
+
 	/* Assign the file name to the index node */
 	if ((ret = assignInode(parentInode, freeInode, fileName, 0)) < 0) {
 		printk("kcreat() Error: Could not assign freeInode to parentInode\n");
+		kfree(fileName);
 		return -1;
 	}
+	kfree(fileName);
 	return 0;
 }
 

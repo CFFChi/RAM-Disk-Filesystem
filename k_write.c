@@ -40,7 +40,6 @@ int plusParentInodeSize(short targetIndex, short* parentInodes) {
 int modifyParentInodePlus(short index, int fileSize) {
 	int i, oldSize, ret;
 	short parentInodes[256];
-
 	/* Build an array of parent directories */
 	if ((ret = plusParentInodeSize(index, parentInodes)) < 0) {
 		printk("modifyParentInodePlus() Error : Could not increase parent inode size\n");
@@ -239,7 +238,6 @@ int k_write(int fd, char* address, int numBytes) {
 		/* Reset the temporary data container */
 		memset(tempData, 0, dataSize);
 	}
-	// printk("Total Bytes Written: %d\n", totalBytes);
 	return totalBytes;
 }
 

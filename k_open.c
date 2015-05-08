@@ -11,6 +11,13 @@
 extern struct Ramdisk *ramdisk;
 extern struct FileDescriptor *fdTable[1024];
 
+void initializeFD(struct FileDescriptor *fd, int index, struct Inode *inode) {
+	fd->filePos = 0;
+	fd->inodePtr = inode; 
+	fdTable[index] = fd;
+	return; 
+}
+
 int k_open(char *pathname) {
 	int index;
 	short parentInode;
@@ -34,9 +41,7 @@ int k_open(char *pathname) {
 	fd = (struct FileDescriptor *) kmalloc(sizeof(struct FileDescriptor), GFP_KERNEL);
 
 	/* Build the file descriptor for this file */
-	fd->filePos = 0;
-	fd->inodePtr = &ramdisk->ib[index];
-	fdTable[index] = fd;
+	initializeFD(fd, index, &ramdisk->ib[index]);
 
 	return index;
 }

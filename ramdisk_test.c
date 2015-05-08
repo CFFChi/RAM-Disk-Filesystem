@@ -27,8 +27,8 @@
 // #define TEST1
 // #define TEST2
 // #define TEST3
-// #define TEST4
-#define TEST5
+#define TEST4
+// #define TEST5
 
 #define USE_RAMDISK
 
@@ -83,7 +83,6 @@ static char data3[PTRS_PB*PTRS_PB*BLK_SZ]; /* Double indirect data size */
 static char addr[PTRS_PB*PTRS_PB*BLK_SZ+1]; /* Scratchpad memory */
 
 int main () {
-
   int retval, i;
   int fd;
   int index_node_number;
