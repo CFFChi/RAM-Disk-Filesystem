@@ -56,8 +56,7 @@ void assignFreeBlockRRPTR2(int index, int p1, int p2, int fbIndex) {
 }
 
 void setRootInode(int iIndex, int size) {
-	char dir[4] = "dir";
-	memcpy(ramdisk->ib[iIndex].type, dir, 4);
+	memcpy(ramdisk->ib[iIndex].type, "dir\0", 4);
 	ramdisk->ib[iIndex].size = size;
 	return;
 }
@@ -114,22 +113,22 @@ int getFreeBlock(void) {
 
 int getInode(int index, char* targetFilename) {
 	int i, j, k, l;
-	struct DirEntry entry; 
+	struct DirEntry entry;
 
 	if (strncmp(ramdisk->ib[index].type, "dir", 3)) {
 		printk("getinode() Error : Inode type is not a directory file\n");
-		return -1; 
-	}	
+		return -1;
+	}
 	/* Loop through the pointer and return index node that matches the target filename */
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
-			case DPTR1: 
-			case DPTR2: 
-			case DPTR3: 
-			case DPTR4: 
-			case DPTR5: 
-			case DPTR6: 
-			case DPTR7: 
+			case DPTR1:
+			case DPTR2:
+			case DPTR3:
+			case DPTR4:
+			case DPTR5:
+			case DPTR6:
+			case DPTR7:
 			case DPTR8: {
 				if (ramdisk->ib[index].location[i] != 0) {
 					for (j = 0; j < NUMEPB; j++) {
@@ -146,7 +145,7 @@ int getInode(int index, char* targetFilename) {
 			case RPTR: {
 				if (ramdisk->ib[index].location[8] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
-					if (ramdisk->ib[index].location[8]->ptr.location[j] == 0) { continue; } 
+					if (ramdisk->ib[index].location[8]->ptr.location[j] == 0) { continue; }
 					for (k = 0; k < NODESZ; k++) {
 						if (ramdisk->ib[index].location[8]->ptr.location[j]->reg.data != 0) {
 							entry = ramdisk->ib[index].location[8]->ptr.location[j]->dir.entry[k];
@@ -171,7 +170,7 @@ int getInode(int index, char* targetFilename) {
 									return entry.inode;
 								}
 							}
-						} 
+						}
 					}
 				}
 				continue;
@@ -199,7 +198,7 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	tempPath = (char *) kzalloc(14, GFP_KERNEL);
 	/* Delimit the path with slash character and get the index node of each directory */
 	while ((subPath = strchr(pathName, '/')) != NULL) {
-		pathSize = subPath - pathName; 
+		pathSize = subPath - pathName;
 		/* Check for valid pathname */
 		if (1 > pathSize || pathSize > 14) {
 			printk("fileExists() Error : Could not parse pathName / invalid input\n");
@@ -223,7 +222,7 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	strncpy(tempPath, pathName, 14);
 	if ((currentIndex = getInode(index, pathName)) < 0) {
 		printk("fileExists() Error : Could not get inode from pathname\n");
-		return -1;		
+		return -1;
 	}
 	/* Copy the last directory in the pathname */
 	strncpy(lastPath, tempPath, pathSize);
@@ -232,12 +231,12 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 	if (currentIndex > 0) {
 		return currentIndex;
 	} else {
-		return 0; 
+		return 0;
 	}
 }
 
 int assignInode(short index, short newInode, char *filename, int dirFlag) {
-	short inode; 
+	short inode;
 	int i, j, k, l;
 	int fbDirect, fbSingle, fbDouble1, fbDouble2, fbDouble3;
 
@@ -249,16 +248,16 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 			}
 			assignFreeBlockDPTR(index, i, fbDirect);
 			switch (i) {
-				case DPTR1: 
-				case DPTR2: 
-				case DPTR3: 
-				case DPTR4: 
-				case DPTR5: 
-				case DPTR6: 
-				case DPTR7: 
+				case DPTR1:
+				case DPTR2:
+				case DPTR3:
+				case DPTR4:
+				case DPTR5:
+				case DPTR6:
+				case DPTR7:
 				case DPTR8: {
 					setDirEntryFree(fbDirect, 0, filename, newInode);
-					return 0; 
+					return 0;
 					continue;
 				}
 				case RPTR: {
@@ -290,16 +289,16 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 			}
 		} else {
 			switch (i) {
-				case DPTR1: 
-				case DPTR2: 
-				case DPTR3: 
-				case DPTR4: 
-				case DPTR5: 
-				case DPTR6: 
-				case DPTR7: 
+				case DPTR1:
+				case DPTR2:
+				case DPTR3:
+				case DPTR4:
+				case DPTR5:
+				case DPTR6:
+				case DPTR7:
 				case DPTR8: {
 					for (j = 0; j < NUMEPB; j++) {
-						inode = (*ramdisk->ib[index].location[i]).dir.entry[j].inode; 
+						inode = (*ramdisk->ib[index].location[i]).dir.entry[j].inode;
 						if (inode == 0) {
 							setDirEntryAlloc(index, i, j, filename, newInode);
 							return 0;
@@ -313,7 +312,7 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 							if ((fbSingle = getFreeBlock()) < 0) {
 								printk("assignInode() Error : Could not find free block in ramdisk\n");
 								return -1;
-							}	
+							}
 							assignFreeBlockRPTR(index, j, fbSingle);
 							setDirEntryFree(fbSingle, 0, filename, newInode);
 							return 0;
@@ -351,7 +350,7 @@ int assignInode(short index, short newInode, char *filename, int dirFlag) {
 									if ((fbDouble3 = getFreeInode()) < 0) {
 										printk("assignInode() Error : Could not find free block in ramdisk\n");
 										return -1;
-									} 
+									}
 									assignFreeBlockRRPTR2(index, j, k, fbDouble3);
 									setDirEntryRRPTR(index, j, k, 0, filename, newInode);
 									return 0;
@@ -379,6 +378,8 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 	short entryInode;
 	int i, j, k, l;
 
+	printk("in searchParentInodes\n");
+
 	if (strncmp(ramdisk->ib[index].type, "reg", 3) == 0) {
 		printk("searchParentInodes() Error : File is not a directory file\n");
 		return -1;
@@ -386,13 +387,13 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 	/* Loop through the pointers and store the index into the array of parent inodes */
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
-			case DPTR1: 
-			case DPTR2: 
-			case DPTR3: 
-			case DPTR4: 
-			case DPTR5: 
-			case DPTR6: 
-			case DPTR7: 
+			case DPTR1:
+			case DPTR2:
+			case DPTR3:
+			case DPTR4:
+			case DPTR5:
+			case DPTR6:
+			case DPTR7:
 			case DPTR8: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NUMEPB; j++) {
@@ -409,7 +410,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case RPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
-					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }	
+					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }
 
 					for (k = 0; k < NUMEPB; k++) {
 						entryInode = (*(*ramdisk->ib[index].location[i]).ptr.location[j]).dir.entry[k].inode;
@@ -426,7 +427,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case RRPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
-					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }	
+					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }
 
 					for (k = 0; k < NODESZ; k++) {
 						if ((*(*ramdisk->ib[index].location[i]).ptr.location[j]).ptr.location[k] == 0) { continue;}
@@ -446,43 +447,52 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			}
 		}
 	}
-	return 0; 
+	return 0;
 }
 
 int adjustPosition(short index, unsigned char* data) {
-	int i, j, k, possibleSize; 
-	possibleSize = -1; 
+	int i, j, k, possibleSize;
+	possibleSize = -1;
 	/* Compute the maximum possible file size */
+	printk("in adjustPosition\n");
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) {
-			return possibleSize; 
+			return possibleSize;
 		}
 		switch (i) {
-			case DPTR1: 
-			case DPTR2: 
-			case DPTR3: 
-			case DPTR4: 
-			case DPTR5: 
-			case DPTR6: 
-			case DPTR7: 
+			case DPTR1:
+			case DPTR2:
+			case DPTR3:
+			case DPTR4:
+			case DPTR5:
+			case DPTR6:
+			case DPTR7:
 			case DPTR8: {
-				data = data + possibleSize + 1; 
+				data = data + possibleSize + 1;
 				memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
 				possibleSize += BLKSZ;
 				continue;
 			}
 			case RPTR: {
+				if (ramdisk->ib[index].location[8] == 0) {
+					return possibleSize;
+				}
+				printk("ramdisk ib index location %d, points to null", index);
 				for (j = 0; j < NODESZ; j++) {
-					if ((*ramdisk->ib[8].location[i]).ptr.location[j] == 0) {
-						return possibleSize; 
+					printk("dereference at j = %d i = %d\n", j, i);
+					if ((*ramdisk->ib[1].location[8]).ptr.location[j] == 0) {
+						return possibleSize;
 					}
-					data = data + possibleSize + 1; 
-					memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+					data = data + possibleSize + 1;
+					memcpy(data, ramdisk->ib[index].location[8], BLKSZ);
 					possibleSize += BLKSZ;
 				}
 				continue;
 			}
 			case RRPTR: {
+				if (ramdisk->ib[index].location[9] == 0) {
+					return possibleSize;
+				}
 				for (j = 0; j < NODESZ; j++) {
 					if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
 						return possibleSize;
@@ -490,10 +500,10 @@ int adjustPosition(short index, unsigned char* data) {
 
 					for (k = 0; k < NODESZ; k++) {
 						if ((*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k] == 0) {
-							return possibleSize; 
+							return possibleSize;
 						}
-						data = data + possibleSize + 1; 
-						memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+						data = data + possibleSize + 1;
+						memcpy(data, ramdisk->ib[index].location[9], BLKSZ);
 						possibleSize += BLKSZ;
 					}
 				}

@@ -29,6 +29,7 @@ void writeToRegDataRRPTR(int index, int p1, int p2, unsigned char* dataChunk, in
 int plusParentInodeSize(short targetIndex, short* parentInodes) {
 	int ret, size, root;
 	root = 0; size = 1;
+	//printk("in plusParentInodeSize\n");
 	/* Get the directories to the file from root and store it into array */
 	if ((ret = searchParentInodes(root, targetIndex, &size, parentInodes)) < 0) {
 		printk("plusParentInodeSize() Error : Could not get parent directories\n");
@@ -40,6 +41,7 @@ int plusParentInodeSize(short targetIndex, short* parentInodes) {
 int modifyParentInodePlus(short index, int fileSize) {
 	int i, oldSize, ret;
 	short parentInodes[256];
+	//printk("in modifyParentInodePlus\n");
 	/* Build an array of parent directories */
 	if ((ret = plusParentInodeSize(index, parentInodes)) < 0) {
 		printk("modifyParentInodePlus() Error : Could not increase parent inode size\n");
@@ -57,43 +59,58 @@ int modifyParentInodePlus(short index, int fileSize) {
 
 int write(short index, unsigned char *data, int size) {
 	int i, j, k;
-	int newSize, position, remainingBytes; 
-	int fbDirect, fbSingle, fbDouble1, fbDouble2; 
+	int newSize, position, remainingBytes;
+	int fbDirect, fbSingle, fbDouble1, fbDouble2;
 
-	position = 0; remainingBytes = size; 
+	printk("write(): Attempting to write %d total bytes at %d\n", size, index);
+	position = 0; remainingBytes = size;
 	for (i = 0; i < NUMPTRS; i++) {
-		if (ramdisk->ib[index].location[i] == 0) {
-			/* Find a free index node */
-			if ((fbDirect = getFreeBlock()) < 0) {
-				printk("write() Error : Could find a free block to allocate\n");
-				return -1;
-			}
-			/* Assign this index node the free block */
-			assignFreeBlockDPTR(index, i, fbDirect);
-
 			/* Direct Pointers */
 			switch (i) {
-				case DPTR1: 
-				case DPTR2: 
-				case DPTR3: 
-				case DPTR4: 
-				case DPTR5: 
-				case DPTR6: 
-				case DPTR7: 
+				case DPTR1:
+				case DPTR2:
+				case DPTR3:
+				case DPTR4:
+				case DPTR5:
+				case DPTR6:
+				case DPTR7:
 				case DPTR8: {
-					/* If the new size is larger than 256 bytes, just set the size to 256 bytes */
-					if ((newSize = size - position) > BLKSZ) { 
-						newSize = BLKSZ;
+					if (ramdisk->ib[index].location[i] == 0) {
+						/* Find a free index node */
+						if ((fbDirect = getFreeBlock()) < 0) {
+							printk("write() Error : Could find a free block to allocate\n");
+							return -1;
+						}
+						/* Assign this index node the free block */
+						assignFreeBlockDPTR(index, i, fbDirect);
+						/* If the new size is larger than 256 bytes, just set the size to 256 bytes */
+						if ((newSize = size - position) > BLKSZ) {
+							newSize = BLKSZ;
+						}
+						/* Write the data into index node */
+						printk("write(): writing %d bytes to direct block %d at iteration %d\n", newSize, index, i);
+						writeToRegDataDPTR(index, i, data, newSize);
+						data = data + newSize;
+						position += newSize;
+						printk("write(): position after write %d is %d\n", i, position);
+						if ((remainingBytes = size - position) <= 0) {
+							printk("write(): returning to writeFile()...\n");
+							return 0;
+						}
+						continue;
 					}
-					data = data + newSize; 
-					/* Write the data into index node */
-					writeToRegDataDPTR(index, i, data, newSize);
-					position += newSize;
-					if ((remainingBytes -= position) < BLKSZ) { return 0; }
 					continue;
 				}
 				/* Single Indirect Pointer */
 				case RPTR: {
+					printk("write(): In single ptr iteration %d\n", i);
+					if(ramdisk->ib[index].location[8] == 0){
+						if((fbDirect = getFreeBlock()) < 0) {
+							printk("write() Error : Could find a free block to allocate\n");
+							return -1;
+						}
+						assignFreeBlockDPTR(index, 8, fbDirect);
+					}
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[8]).ptr.location[j] == 0) {
 							if ((fbSingle = getFreeBlock()) < 0) {
@@ -105,16 +122,29 @@ int write(short index, unsigned char *data, int size) {
 							if ((newSize = size - position) > BLKSZ) {
 								newSize = BLKSZ;
 							}
-							data = data + newSize;
+							printk("write(): writing %d bytes to block %d in single rdr (8)\n", newSize, index);
 							writeToRegDataRPTR(index, j, data, newSize);
+							data = data + newSize;
 							position += newSize;
-							if ((remainingBytes -= position) < BLKSZ) { return 0; }
+							printk("write(): position after write %d, %d is %d\n", i, j, position);
+							if ((remainingBytes = size - position) <= 0) {
+								printk("write(): returning to writeFile()...\n");
+								return 0;
+								}
 						}
 					}
 					continue;
 				}
 				/* Double Indirect Pointer */
 				case RRPTR: {
+					printk("write(): In double ptr iteration %d\n", i);
+					if(ramdisk->ib[index].location[9] == 0){
+						if((fbDirect = getFreeBlock()) < 0) {
+							printk("write() Error : Could find a free block to allocate\n");
+							return -1;
+						}
+						assignFreeBlockDPTR(index, 9, fbDirect);
+					}
 					for (j = 0; j < NODESZ; j++) {
 						if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
 							if ((fbDouble1 = getFreeBlock()) < 0) {
@@ -134,10 +164,15 @@ int write(short index, unsigned char *data, int size) {
 									if ((newSize = size - position) > BLKSZ) {
 										newSize = BLKSZ;
 									}
-									data = data + newSize;
+									printk("write(): writing %d bytes to block %d in double rdr (9)\n", newSize, index);
 									writeToRegDataRRPTR(index, j, k, data, newSize);
-									position += newSize; 
-									if ((remainingBytes -= position) < BLKSZ) { return 0; }
+									data = data + newSize;
+									position += newSize;
+									printk("write(): position after write %d, %d, %d is %d\n", i, j, k, position);
+									if ((remainingBytes = size - position) <= 0) {
+										printk("write(): returning to writeFile()...\n");
+										return 0;
+										}
 								}
 							}
 						}
@@ -146,7 +181,6 @@ int write(short index, unsigned char *data, int size) {
 				}
 			}
 		}
-	}
 	printk("write() Error : Could not write the data into ramdisk\n");
 	return -1;
 }
@@ -161,7 +195,7 @@ int writeFile(short index, int filePos, unsigned char *data, int dataSize) {
 	if ((ret = adjustPosition(index, newData)) < -1) {
 		printk("writeFile() Error : Could not get the contents of index node\n");
 		return -1;
-	} 
+	}
 	/* Compute the size of the data */
 	newSize = filePos + dataSize;
 	if (newSize > MAXFSZ) {
@@ -180,6 +214,7 @@ int writeFile(short index, int filePos, unsigned char *data, int dataSize) {
 		}
 		/* Set the file position to the end */
 		fdTable[index]->filePos = MAXFSZ;
+		printk("writeFile(): returing to k_write()...\n");
 		return (MAXFSZ - filePos);
 	} else {
 		/* Data size fits into the block */

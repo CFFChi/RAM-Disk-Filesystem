@@ -24,11 +24,11 @@
 // #define's to control what tests are performed,
 // comment out a test if you do not wish to perform it
 
-#define TEST1
+//#define TEST1
 #define TEST2
 #define TEST3
-#define TEST4
-#define TEST5
+//#define TEST4
+//#define TEST5
 
 #define USE_RAMDISK
 
@@ -65,7 +65,7 @@ int my_readdir(int fd, char* str) {
 // #define's to control whether single indirect or
 // double indirect block pointers are tested
 
-// #define TEST_SINGLE_INDIRECT
+#define TEST_SINGLE_INDIRECT
 // #define TEST_DOUBLE_INDIRECT
 
 #define MAX_FILES 1023
@@ -88,8 +88,8 @@ int main () {
 
   /* Some arbitrary data for our files */
   memset (data1, '1', sizeof (data1));
-  memset (data2, '2', sizeof (data1));
-  memset (data3, '3', sizeof (data1));
+  memset (data2, '2', sizeof (data2));
+  memset (data3, '3', sizeof (data3));
 
 
 #ifdef TEST1
