@@ -224,6 +224,7 @@ int fileExists(char *pathName, char* lastPath, short* parentInode) {
 		printk("fileExists() Error : Could not get inode from pathname\n");
 		return -1;
 	}
+	printk("fileExists(): tempPath %s", tempPath);
 	/* Copy the last directory in the pathname */
 	strncpy(lastPath, tempPath, pathSize);
 	/* Store the parent directory's index node */
@@ -397,6 +398,7 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case DPTR8: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NUMEPB; j++) {
+					printk("break here 1");
 					entryInode = (*ramdisk->ib[index].location[i]).dir.entry[j].inode;
 					if (entryInode == targetInode) { return 1; }
 					parentInodes[*pIndex] = entryInode;
@@ -410,9 +412,11 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case RPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
+					printk("break here 2");
 					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }
 
 					for (k = 0; k < NUMEPB; k++) {
+						printk("break here 3");
 						entryInode = (*(*ramdisk->ib[index].location[i]).ptr.location[j]).dir.entry[k].inode;
 						if (entryInode == targetInode) { return 1; }
 						parentInodes[*pIndex] = entryInode;
@@ -427,12 +431,15 @@ int searchParentInodes(short index, short targetInode, int *pIndex, short* paren
 			case RRPTR: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NODESZ; j++) {
+					printk("break here 4");
 					if ((*ramdisk->ib[index].location[i]).ptr.location[j] == 0) { continue; }
 
 					for (k = 0; k < NODESZ; k++) {
+						printk("break here 5");
 						if ((*(*ramdisk->ib[index].location[i]).ptr.location[j]).ptr.location[k] == 0) { continue;}
 
 						for (l = 0; l < NUMEPB; l++) {
+							printk("break here 6");
 							entryInode = (*(*ramdisk->ib[index].location[i]).ptr.location[j]).ptr.location[k]->dir.entry[l].inode;
 							if (entryInode == targetInode) { return 1; }
 							parentInodes[*pIndex] = entryInode;
@@ -459,6 +466,9 @@ int adjustPosition(short index, unsigned char* data) {
 		if (ramdisk->ib[index].location[i] == 0) {
 			return possibleSize;
 		}
+		if(possibleSize < 0){
+			possibleSize = 0;
+		}
 		switch (i) {
 			case DPTR1:
 			case DPTR2:
@@ -468,31 +478,28 @@ int adjustPosition(short index, unsigned char* data) {
 			case DPTR6:
 			case DPTR7:
 			case DPTR8: {
-				data = data + possibleSize + 1;
 				memcpy(data, ramdisk->ib[index].location[i], BLKSZ);
+				data = data + BLKSZ;
 				possibleSize += BLKSZ;
 				continue;
 			}
 			case RPTR: {
-				if (ramdisk->ib[index].location[8] == 0) {
-					return possibleSize;
-				}
-				printk("ramdisk ib index location %d, points to null", index);
+				data = kmalloc(64*BLKSZ, GFP_KERNEL);
+				//return (8*BLKSZ + 64*BLKSZ);
 				for (j = 0; j < NODESZ; j++) {
-					printk("dereference at j = %d i = %d\n", j, i);
-					if ((*ramdisk->ib[1].location[8]).ptr.location[j] == 0) {
+					printk("dereference at j = %d i = %d index = %d\n", j, i, index);
+					if ((*ramdisk->ib[index].location[8]).ptr.location[j] == 0) {
 						return possibleSize;
 					}
-					data = data + possibleSize + 1;
-					memcpy(data, ramdisk->ib[index].location[8], BLKSZ);
+					printk("passed deref\n");
+					memcpy(data, ramdisk->ib[index].location[8]->ptr.location[j], BLKSZ);
+					data = data + BLKSZ;
 					possibleSize += BLKSZ;
 				}
 				continue;
 			}
 			case RRPTR: {
-				if (ramdisk->ib[index].location[9] == 0) {
-					return possibleSize;
-				}
+				data = kmalloc(64*64*BLKSZ, GFP_KERNEL);
 				for (j = 0; j < NODESZ; j++) {
 					if ((*ramdisk->ib[index].location[9]).ptr.location[j] == 0) {
 						return possibleSize;
@@ -502,8 +509,8 @@ int adjustPosition(short index, unsigned char* data) {
 						if ((*(*ramdisk->ib[index].location[9]).ptr.location[j]).ptr.location[k] == 0) {
 							return possibleSize;
 						}
-						data = data + possibleSize + 1;
-						memcpy(data, ramdisk->ib[index].location[9], BLKSZ);
+						memcpy(data, ramdisk->ib[index].location[9]->ptr.location[j]->ptr.location[k], BLKSZ);
+						data = data + BLKSZ;
 						possibleSize += BLKSZ;
 					}
 				}

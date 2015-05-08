@@ -1,5 +1,5 @@
 #define RDSKSZ 	2097152 // 2MB
-#define BLKSZ	256		
+#define BLKSZ	256
 #define BTMPSZ 	(4 * BLKSZ) // Size of Bitmap Block
 #define NODESZ 	64			// Size of Pointer
 
@@ -23,7 +23,7 @@
 #define DPTR3 2
 #define DPTR4 3
 #define DPTR5 4
-#define DPTR6 5 
+#define DPTR6 5
 #define DPTR7 6
 #define DPTR8 7
 #define RPTR  8
@@ -71,7 +71,7 @@ struct IoctlInfo {
  * IOParam
  *		fd : File descriptor
  *		address : Address of Data
- *		numBytees : Size of file 
+ *		numBytees : Size of file
  */
 struct IOParameter {
 	int fd;
@@ -171,6 +171,16 @@ struct Ramdisk {
 	union Block fb[FBARR];
 };
 
+int rd_creat(char* pathname);
+int rd_mkdir(char* pathname);
+int rd_open(char* pathname);
+int rd_close(int fd);
+int rd_read(int fd, char* address, int num_bytes);
+int rd_write(int fd, char* address, int num_bytes);
+int rd_lseek(int fd, int offset);
+int rd_unlink(char* pathname);
+int rd_readdir(int fd, char* address);
+
 /* ioctl Functions */
 int initializeRAMDISK(void);
 int k_creat(char* pathname);
@@ -201,5 +211,3 @@ int fileExists(char *pathName, char* lastPath, short* parentInode);
 int assignInode(short index, short newInode, char *filename, int dirFlag);
 int searchParentInodes(short index, short targetInode, int *pIndex, short* parentInodes);
 int adjustPosition(short index, unsigned char* data);
-
-

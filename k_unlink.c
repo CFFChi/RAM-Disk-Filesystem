@@ -20,15 +20,15 @@ void cleanupDirLocation(union Block *location) {
 	byte = ramdisk->bb.byte[bIndex / 8];
 	offset = ~(0x01 << (7 - (bIndex % 8)));
 	/* Clear the bit */
-	ramdisk->bb.byte[bIndex / 8] = byte & offset; 
+	ramdisk->bb.byte[bIndex / 8] = byte & offset;
 	/* Increment number of free blocks available in Super Block*/
 	ramdisk->sb.numFreeBlocks++;
 	return;
 }
 
 int removeDirEntry(short index, char* targetFilename) {
-	int i, j, k, l; 
-	struct DirEntry entry; 
+	int i, j, k, l;
+	struct DirEntry entry;
 	/* Increment targetFilename to get rid of leading root character */
 	targetFilename++;
 	/* Check that the file is regular file */
@@ -39,14 +39,14 @@ int removeDirEntry(short index, char* targetFilename) {
 	for (i = 0; i < NUMPTRS; i++) {
 		switch (i) {
 			/* Direct Pointer */
-			case DPTR1: 
-			case DPTR2: 
-			case DPTR3: 
-			case DPTR4: 
-			case DPTR5: 
-			case DPTR6: 
-			case DPTR7: 
-			case DPTR8: { 
+			case DPTR1:
+			case DPTR2:
+			case DPTR3:
+			case DPTR4:
+			case DPTR5:
+			case DPTR6:
+			case DPTR7:
+			case DPTR8: {
 				if (ramdisk->ib[index].location[i] == 0) { continue; }
 				for (j = 0; j < NUMEPB; j++) {
 					entry = ramdisk->ib[index].location[i]->dir.entry[j];
@@ -81,7 +81,7 @@ int removeDirEntry(short index, char* targetFilename) {
 						cleanupDirLocation(ramdisk->ib[index].location[8]);
 						ramdisk->ib[index].location[8] = NULL;
 					}
-					return 0; 
+					return 0;
 				}
 			}
 			/* Double Indirect Pointer */
@@ -129,7 +129,7 @@ void cleanupRegLocation(union Block *location) {
 	byte = ramdisk->bb.byte[bIndex / 8];
 	offset = ~(0x01 << (7 - (bIndex % 8)));
 	/* Clear the bit */
-	ramdisk->bb.byte[bIndex / 8] = byte & offset; 
+	ramdisk->bb.byte[bIndex / 8] = byte & offset;
 	/* Increment number of free blocks available in Super Block */
 	ramdisk->sb.numFreeBlocks++;
 	/* Set the block bytes to zero */
@@ -143,13 +143,13 @@ int removeRegEntry(short index) {
 	for (i = 0; i < NUMPTRS; i++) {
 		if (ramdisk->ib[index].location[i] == 0) { return 0; }
 		switch (i) {
-			case DPTR1: 
-			case DPTR2: 
-			case DPTR3: 
-			case DPTR4: 
-			case DPTR5: 
-			case DPTR6: 
-			case DPTR7: 
+			case DPTR1:
+			case DPTR2:
+			case DPTR3:
+			case DPTR4:
+			case DPTR5:
+			case DPTR6:
+			case DPTR7:
 			case DPTR8: {
 				cleanupRegLocation(ramdisk->ib[index].location[i]);
 				continue;
@@ -186,7 +186,7 @@ int removeRegEntry(short index) {
 int minusParentInodeSize(char* pathName, char* lastPath, int* currentInode, int blkSize) {
 	int index;
 	unsigned int pathSize;
-	char *tempPath, *subPath; 
+	char *tempPath, *subPath;
 	index = 0; pathSize = 0; pathName++; // Increment pathname to get rid of root character
 	tempPath = (char *) kmalloc(14, GFP_KERNEL);
 	/* Walk through the absolute pathName split up with / character */
@@ -228,7 +228,7 @@ int modifyParentInodeMinus(char *pathName, int blkSize) {
 		printk("fileExists() Error : Path requires a file name following the root character\n");
 		return -1;
 	}
-	index = 0; 
+	index = 0;
 	lastPath = (char *) kmalloc(14, GFP_KERNEL);
 	/* Reduce the size of inode in root by blkSize */
 	ramdisk->ib[index].size = ramdisk->ib[index].size - blkSize;
@@ -251,7 +251,7 @@ int k_unlink(char* pathName) {
 	int index, ret;
 	short parentInode;
 	char* filename;
-	parentInode = 0; 
+	parentInode = 0;
 	filename = (char *) kmalloc(14, GFP_KERNEL);
 	/* Check that the file is not the root */
 	if (!strncmp(pathName, "/\0", 2)) {
@@ -303,7 +303,7 @@ int k_unlink(char* pathName) {
 		/* Increment number of available free index node*/
 		ramdisk->sb.numFreeInodes++;
 		return 0;
-	} 
+	}
 	return -1;
 }
 

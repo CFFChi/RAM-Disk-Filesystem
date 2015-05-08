@@ -17,6 +17,8 @@ struct FileDescriptor *fdTable[1024];
 EXPORT_SYMBOL(ramdisk);
 EXPORT_SYMBOL(fdTable);
 
+static int FileCount;
+
 /* Declare and Initialize the mutex */
 DECLARE_MUTEX(RAMutex);
 
@@ -44,10 +46,11 @@ void cleanParameter(struct IOParameter *param) {
 
 /***** Ramdisk Entry Point *****/
 static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg) {
-	int ret, fd; 
+	int ret, fd;
 	struct IoctlInfo info;
 	struct IOParameter param;
-	char* retAddress; 
+	char* retAddress;
+
 
 	switch (cmd) {
 		case RD_CREAT:
@@ -59,6 +62,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			ret = k_creat(info.pathname);
 			cleanInfo(&info);
 			up(&RAMutex);
+			if(ret == 0) {
+				FileCount++;
+			}
 			return ret;
 			break;
 
@@ -71,6 +77,9 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			ret = k_mkdir(info.pathname);
 			cleanInfo(&info);
 			up(&RAMutex);
+			if(ret == 0) {
+				FileCount++;
+			}
 			return ret;
 			break;
 
@@ -134,10 +143,13 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			ret = k_unlink(info.pathname);
 			cleanInfo(&info);
 			up(&RAMutex);
+			if(ret == 0){
+				FileCount--;
+			}
 			return ret;
 			break;
 
-		case RD_READDIR: 
+		case RD_READDIR:
 			down_interruptible(&RAMutex);
 			// printk("\nCase: RD_READDIR()...\n");
 			copy_from_user(&param, (struct IOParameter *) arg, sizeof(struct IOParameter));
@@ -146,7 +158,7 @@ static int ramdisk_ioctl(struct inode *inode, struct file *file, unsigned int cm
 			copy_to_user(param.address, retAddress, NUMEPB);
 			cleanParameter(&param);
 			up(&RAMutex);
-			return ret; 
+			return ret;
 			break;
 
 		default:
@@ -191,6 +203,7 @@ static int __init initialiaze_routine(void) {
 		return 1;
 	} else {
 		printk("<1> Ramdisk Initialization Complete...\n");
+		FileCount = 0;
 		return 0;
 	}
 }

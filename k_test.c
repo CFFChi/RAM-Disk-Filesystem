@@ -11,7 +11,7 @@
 
 
 int test1() {
-	int ret1, ret2, ret3; 
+	int ret1, ret2, ret3;
 	char* fileA = "/fileA";
 	char* fileB = "/fileB";
 	char* fileC = "/fileC";
@@ -60,7 +60,7 @@ int test2() {
 		printf("Error creating directories dir1, dir2, dir3 in /\n");
 		return -1;
 	}
-	
+
 	if ((fd = rd_open(dir2)) < 0) {
 		printf("Error opening directory\n");
 		return -1;
@@ -75,6 +75,7 @@ int test2() {
 		inode = atoi(&address[14]);
 		printf("Data at Address: [%s, %d]\n", address, inode);
 	}
+	return 0;
 }
 
 int test3() {

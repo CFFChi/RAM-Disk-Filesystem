@@ -2,6 +2,7 @@
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "ramdisk.h"
 
@@ -70,7 +71,7 @@ int rd_write(int fd, char *address, int numBytes) {
 int rd_lseek(int fd, int offset) {
 	int ret, fdd;
 	struct IOParameter param;
-	// printf("Calling rd_lseek()...\n"); 
+	// printf("Calling rd_lseek()...\n");
 	param.fd = fd;
 	param.address = NULL;
 	param.numBytes = offset;
